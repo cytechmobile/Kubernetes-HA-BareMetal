@@ -1,0 +1,34 @@
+= Install Kubernetes Cluster [Requirements]
+
+The approach we will use for setting up the Kubernetes cluster is based on the https://github.com/kubernetes-incubator/kubespray/[kubernetes-incubator/kubespray] project, with a couple of differentiations.
+
+First of all, let's take care of the `kubespray` requirements.
+
+As explained in the https://github.com/kubernetes-incubator/kubespray#requirements[kubespray requirements] doc, you need to set up a couple of things before asking `kubespray` to set up your k8s cluster.
+
+1. Install ansible on the machine that you will be using to initiate the installation. This is probably your workstation. (On macOS, installation is as simple as `brew install ansible`).
+
+1. Having already installed the OS and having ssh access to the servers, we'll copy our public key to each of the target servers, for easier access:
+
+[bash]
+----
+cat ~/.ssh/<your_key>.pub
+#copy this value
+ssh root@<node>
+mkdir .ssh
+vi .ssh/authorized_keys
+# paste the public key
+
+#Now ensure we have enabled use of authorized_keys file
+vi /etc/ssh/sshd_config
+#uncomment the line for Authorized keys
+sudo service ssh restart
+----
+
+3. Enable IP forwarding
+
+Follow instructions in http://www.ducea.com/2006/08/01/how-to-enable-ip-forwarding-in-linux/[the this article] to check if it's enabled and how to do so.
+
+4. Install Python
+
+Ensure you have python installed on each target node, so: `sudo apt install python`

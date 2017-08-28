@@ -1,0 +1,55 @@
+= Ubuntu Server 16.04 OS Installation
+
+This guide walks you through the steps necessary to install Ubuntu 16.04 LTS on a bare metal server.
+
+1. Create bootable USB Stick, following the tutorial available by Ubuntu, depending
+if your desktop is
+https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-windows[Windows],
+https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-macos#0[OSX]
+or https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-ubuntu[Ubuntu].
+
+1. Boot from USB device
+1. _UNetbootin prompt_: Select **"Install Ubuntu Server"
+1. _Language_: Who am I to say what language you want to set on your server... I just
+went for the boring option: **"English"**
+
+1. _Country selection_: Select your country (in our case "Other"  => "Europe" => "Greece")
+1. _Locale selection_: `en_US.UTF-8` locale selection
+1. _Keyboard layout_: **"Yes"** on auto-detect. Press keys as requested. (in our case, `us:intl` )
+1. Press **"ok"** on unetbooting warning. You can safely ignore.
+1. _Hostname_: You will need some kind of naming scheme. I used **`kube01`** and increased
+numbering accordingly.
+1. _Username_: Please feel free to use `ubuntu` or whatever you prefer. I used **`k8s`**.
+1. _Password_: Select a secure password and make sure to store it somewhere safe. No,
+Post-its on your screen do not classify as "somewhere safe".
+
+1. _Encrypt user home_: **"No"**. *Disclaimer*: clearly, there might be security considerations
+on your environment, which I'm not aware of. Make up your own mind, but my guide assumes
+you selected "No".
+
+1. _Confirm Timezone_: in my case it was correctly auto-detected as "Europe/Athens".
+1. _Disk and partitions_:
+  * (Optional, e.g. in case the bare metal server was already used for something else)
+  Unmount partitions that are in use: **"Yes"**
+
+  * Guided => Use entire disk & setup LVM
+  * Select appropriate disk
+  * "Yes"
+  * "50%" on LVM size
+  * Finish Partitioning
+  * Confirm by clicking "Yes"
+
+1. _Proxy_: leave **blank**, or enter http proxy, if appropriate (in my case blank).
+1. _Security Updates_: Again, this is a security consideration you will have to make
+ on your own (I am by no means a security expert), but I did select:
+ **"Install security updates"**
+
+1. _Software selection_:
+  * ensure `standard system utilities` AND
+  * `OpenSSH server` are both checked
+1. Patiently **wait** for software to be installed..............
+1. _Install the GRUB boot loader to the master boot record_?
+  * Select "Yes"
+  * Select hard disk (not USB disk!) - usually `/dev/sda` - and press Enter.
+1. Remove USB disk and click "Continue".
+

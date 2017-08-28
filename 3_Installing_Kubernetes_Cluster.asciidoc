@@ -1,0 +1,12 @@
+= Install Kubernetes Cluster
+
+Now it's time to proceed with the installation of the actual cluster.
+
+In order to do this, we'll use `kubespray's` ansible playbooks, which involves two steps:
+1. Telling Ansible where the playbooks will run (in Ansible terms this is called "creating the inventory")
+2. Editing some options for the playbooks
+
+== Create inventory for ansible playbooks
+
+This can be created using a python script (you might need to install `python3` -- `brew install python3`), by running the following set of commands, available in the https://github.com/kubernetes-incubator/kubespray/blob/master/docs/getting-started.md#building-your-own-inventory[kubespray guide for building your own inventory].
+
