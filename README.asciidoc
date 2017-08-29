@@ -21,7 +21,7 @@ link:2_Kubernetes_Requirements.asciidoc
 link:3_Installing_Kubernetes_Cluster.asciidoc[Install Kubernetes]:: Use the Ansible playbooks / recipes provided by the Kubespray
 project, in order to set up your Kubernetes cluster.
 
-link:4_HighAvailability_Without_ELB.asciidoc[High-Availability without AWS ELB]:: Even if you have an HA K8s cluster, you still need
+link:4_0_HighAvailability_Outside_Cloud.asciidoc[High-Availability without AWS ELB]:: Even if you have an HA K8s cluster, you still need
 an HA way to bring traffic into your cluster. Your best option is to use one of the
 cloud providers' Load Balancers (e.g. AWS ELB), but what if you can't / don't want to?
 

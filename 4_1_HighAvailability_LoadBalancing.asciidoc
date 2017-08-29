@@ -1,0 +1,144 @@
+= Load Balancing Incoming Traffic
+
+Ok, let's decompose this into the following 3 steps:
+
+1.DNS => Host:: Resolve Host from DNS
+2.Host => Kubernetes:: Forward traffic from host to Kubernetes cluster
+3.Kubernetes => Your Service:: Map incoming request to your service running within Kubernetes
+
+Our solution will be based on the
+https://github.com/kubernetes/contrib/tree/master/service-loadbalancer[Kubernetes Service LoadBalancer].
+
+_The Service LoadBalancer is essentially deployed as a Pod *within* the k8s cluster, so we will first
+need to look at how an incoming request will reach that specific pod._
+
+
+== DNS Resolution (DNS => Host)
+
+This actually turns out to be much simpler than I would have thought and basically boils down to this:
+
+[literal]
+Add an `A` record to your DNS with the IP of every host that you will deploy the Service LoadBalancer pod on.
+
+By adding the multiple `A` records, you are telling DNS clients to essentially round robin between the
+candidate hosts.
+
+A detailed discussion on the number of hosts you will choose to deploy it on, is slightly beyond
+the scope of this guide. Suffice it to say you should deploy to *at least* 2 hosts.
+
+_Ok, our incoming request has now reached one of the hosts. What next?_
+
+== Forwarding to Kubernetes (Host => Kubernetes)
+
+The idea is, again, quite simple:
+
+Rather than opening a separate port on each worker node, through multiple `NodePort` services, one for
+each of the different services we will have running within the K8s cluster, instead, we will have *a single
+`NodePort` service*, for the Service LoadBalancer.
+
+This way, we avoid port conflicts on the host (e.g. in the case where we're deploying multiple instances of the
+same app) and access control also becomes much simpler (only one firewall port needs to be opened).
+
+Here is an example of the service definition:
+
+[source, yaml]
+----
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lb-service
+  namespace: kube-system
+spec:
+  type: NodePort
+  selector:
+    app: service-loadbalancer
+  ports:
+  - port: 80
+    nodePort: 30800
+    name: http
+  - port: 443
+    nodePort: 30443
+    name: https
+----
+
+_With this, the incoming request for `app.under.my_domain.name:30800`, should now have entered the
+Kubernetes cluster and we just need to find out where to route it internally._
+
+== Route Internally (Kubernetes => Service)
+
+This is finally where the Service LoadBalancer is able to do its thing. The incoming request has
+reached one of its pods and it now needs to look up how to route this service.
+
+The Service LoadBalancer is actually already very powerful (even though it's still under WIP) and
+supports many different ways to do this, but I will be focusing on the `Name-based virtual hosting`.
+
+NOTE: The Service LoadBalancer readme currently states that this is an undocumented feature, but I
+ found it pretty easy to get it to work.
+
+Let's consider an example to help you understand the differences involved.
+
+Deploy Grafana and expose it not as `NodePort`, but rather through the Service LoadBalancer's
+Name-based virtual hosting.
+
+Traditionally, you would expose Grafana like so:
+
+[source, yaml]
+----
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: core
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      nodePort: 30000
+  selector:
+    app: grafana
+    component: core
+----
+
+This would open up port 30000 on the worker node and would forward incoming requests from that port
+directly to Grafana.
+
+Instead, using the Service LoadBalancer, we don't need to expose that port:
+
+[source, yaml]
+----
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: core
+  annotations:
+    serviceloadbalancer/lb.host: grafana.under.my_domain.name:30800
+spec:
+#  type: NodePort
+  ports:
+    - port: 3000
+#      nodePort: 30000
+  selector:
+    app: grafana
+    component: core
+----
+
+(_I've commented out the lines to help you spot the difference_)
+
+== Limitations
+
+Compared to AWS ELB, this approach does not provide a solution for the health check mechanism bundled
+into ELB. Combined with an AWS Auto-Scaling Group, this can help you overcome node failures by
+automatically destroying the failed instances and starting new ones.
+
+I am not interested in this feature for the given use case and for the time being, so I am explicitly
+excluding it from my scope.

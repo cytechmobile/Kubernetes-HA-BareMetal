@@ -1,0 +1,25 @@
+= High Availability Outside the Cloud
+
+This section will cover how network traffic is routed in and out of the cluster in an HA way.
+
+Of course, if you are running on AWS, your best option is to use your cloud provider's features for this.
+Namely:
+
+Elastic Load Balancers:: For incoming traffic into your Kubernetes cluster.
+
+NAT Gateway:: For outgoing traffic, so that:
+a. your traffic always appears as *originating from specific IPs* (useful, e.g. for firewall whitelisting)
+b. you can keep all your EC2 instances in a private subnet (so that they don't have a public IP)
+but still give them internet access.
+
+
+...BUT what if you can't / don't want to use these?
+
+
+We've put together some instructions for each:
+
+* link:4_1_HighAvailability_LoadBalancing.asciidoc[High Availability Load Balancing]
+* link:4_2_HighAvailability_NAT.asciidoc[High Availability NAT]
+
+Or, you may want to skip ahead to
+link:5_Persistent_Storage_GlusterFS.asciidoc[Persistent Storage Using GlusterFS].

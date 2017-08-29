@@ -1,0 +1,96 @@
+= NATing outgoing traffic
+
+As I mentioned above, there are 2 main reasons (that I know) for which you would need to use NAT for
+your outgoing network traffic.
+
+1.Static Origin IPs:: Your traffic always appears as *originating from specific IPs* (useful,
+e.g. for firewall whitelisting)
+
+2.Private Subnets:: You can keep all your EC2 instances in a private subnet (so that they don't have
+a public IP) but still give them internet access.
+
+== High Availability NAT
+
+Even though I am most certainly NOT a networks expert, from what I've gathered in the past couple of
+days, an HA NAT deployment consists of the following components:
+
+NAT:: A set of nodes that implement NAT, each with its own public static IP address (no pun intended).
+Internet-bound traffic from the internal network is routed to these nodes, where NAT is applied
+before the traffic is forwarded.
+
+Routing Table:: A software-defined routing table for each of the private network subnets. This way the
+traffic from the Kubernetes nodes who are running in the private subnets can reach a suitable NAT node,
+so that it can then be forwarded to the internet.
+
+Health check & Fail-over:: Some entity that monitors the NAT nodes (failures, unreachable, etc.) and
+modifies the above routing table, in case one of the nodes goes down.
+
+== HA NAT @ Bare Metal
+
+In my particular bare metal scenario, there is actually no hard "business" need for me to provide NAT
+as part of my deployment. If any NATing takes place, it happens elsewhere on the network.
+
+I am simply assigned a *set of predefined public IPs* for my Kubernetes cluster nodes.
+This solves #1 and #2 is not a particular concern as there is a separate firewall (with its own set of policies).
+
+And this leads us to the first real-world solution for implementing NAT: Don't do it!
+YAGNI - i.e. it's already taken care of, for you.
+
+NOTE: Even though I've not had the use case yet, in the case where you would need to roll your own
+HA NAT, your solution would need to take the 3 components from the above section into account:
+*1.* Who does the actual NATing? *2.* How is the traffic routed from the private subnets to the NAT nodes
+and *3.* How do you monitor #1 and how do you modify #2 ?
+
+== HA NAT @ AWS
+
+Once on AWS, things are always a lot simpler... and more expensive!
+
+=== AWS NAT Gateway
+
+The most expensive solution is the AWS NAT Gateway. It covers everything you need and it only takes
+a few clicks (or CLI/API calls) to set it up.
+
+You simply create a new NAT gateway from the AWS console. Then go to the Route Table of your private
+subnet, which probably looks something like:
+
+`<your_private_ip_range> local`
+
+and add a single entry:
+
+`0.0.0.0 <nat_gateway_id>`
+
+so that all non-local traffic will now go through the NAT gateway.
+
+IMPORTANT: You will need one NAT gateway per AZ, so you'll need to repeat this process if you have
+a different private subnet per AZ.
+
+=== AWS NAT Instances
+
+This solution is a sort of a roll-your-own, but-with-Amazon's-help type of solution and boils down
+to the following:
+
+NAT Instances::
+Deploy an off-the-shelf NAT Instance (meaning they give you the AMI you need) per AZ.
+
+Route Table::
+Add an entry to the route table of each private subnet towards the EC2 instance id of the NAT
+instance in the same AZ as the subnet.
+
+Health-Check::
+Use the EC2 instance `User Data` to add a bash script that allows the NAT instances to monitor
+each other.
+
+The approach is described in detail in a (rather old)
+https://aws.amazon.com/articles/2781451301784570[AWS article].
+
+IMPORTANT: Even though *considerably* cheaper, there are 2 important caveats to this approach from
+our experience.
+
+1. There is some sort of bug in the `nat_monitor.sh` script that can lead to both NAT instances
+reaching a `STOPPED` state. All it takes is a simple "start" to get them going, but we did have
+to install appropriate monitors in place for this.
+
+1. When picking the EC2 instance size for your NAT instance, you'll be inclined to just go with
+ `t2.nano`. Do take into account that the smaller instances have a considerably lower network
+ bandwidth, so if you are experiencing some sort of bottleneck that you can't trace on the rest
+ of your infra, you'll want to test that too!
