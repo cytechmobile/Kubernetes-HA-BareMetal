@@ -1,6 +1,5 @@
 
 = Set Up Kubernetes Host Machines
-:numbered:
 
 The process of getting the hosts ready will clearly differ depending on whether you're
 actually on bare metal servers, or if you're running on some hosted servers
