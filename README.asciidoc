@@ -16,7 +16,8 @@ This guide is structured as follows:
 link:1_Kubernetes_Hosts.asciidoc[Set Up Kubernetes Host Machines]:: Prepare the hosts, before installing kubernetes,
 depending on if you're using bare metal, virtual private servers, EC2 instances, etc.
 
-link:2_Kubernetes_Requirements.asciidoc
+link:2_Kubernetes_Requirements.asciidoc[Requirements]:: A couple of basic things you'll need to take
+care of before beginning to install your cluster.
 
 link:3_Installing_Kubernetes_Cluster.asciidoc[Install Kubernetes]:: Use the Ansible playbooks / recipes provided by the Kubespray
 project, in order to set up your Kubernetes cluster.
