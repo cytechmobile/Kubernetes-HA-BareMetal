@@ -1,15 +1,25 @@
-= Install Kubernetes Cluster [Requirements]
+= Requirements
 
-The approach we will use for setting up the Kubernetes cluster is based on the https://github.com/kubernetes-incubator/kubespray/[kubernetes-incubator/kubespray] project, with a couple of differentiations.
+The approach we will use for setting up the Kubernetes cluster is based on the
+https://github.com/kubernetes-incubator/kubespray/[kubernetes-incubator/kubespray] project,
+with a couple of differentiations.
 
 First of all, let's take care of the `kubespray` requirements.
 
-As explained in the https://github.com/kubernetes-incubator/kubespray#requirements[kubespray requirements] doc, you need to set up a couple of things before asking `kubespray` to set up your k8s cluster.
+As explained in the
+https://github.com/kubernetes-incubator/kubespray#requirements[kubespray requirements] doc,
+you need to set up a couple of things before asking `kubespray` to set up your k8s cluster.
 
-1. Install ansible on the machine that you will be using to initiate the installation. This is probably your workstation. (On macOS, installation is as simple as `brew install ansible`).
 
-1. Having already installed the OS and having ssh access to the servers, we'll copy our public key to each of the target servers, for easier access:
+First and foremost, you need to install Ansible on the machine that you will be using to initiate
+the installation. This is probably your workstation. (On macOS, installation is as simple as
+`brew install ansible`).
 
+== Bare Metal
+
+Public Key Access:: Having already installed the OS and having ssh access to the servers,
+we'll copy our public key to each of the target servers, for easier access:
++
 [bash]
 ----
 cat ~/.ssh/<your_key>.pub
@@ -25,10 +35,31 @@ vi /etc/ssh/sshd_config
 sudo service ssh restart
 ----
 
-3. Enable IP forwarding
+IP forwarding::
+Follow instructions in http://www.ducea.com/2006/08/01/how-to-enable-ip-forwarding-in-linux/[this article] to check if it's enabled and how to do so.
 
-Follow instructions in http://www.ducea.com/2006/08/01/how-to-enable-ip-forwarding-in-linux/[the this article] to check if it's enabled and how to do so.
+Python:: Ensure you have python installed on each target node, so: `sudo apt install python-minimal`
 
-4. Install Python
+== AWS EC2
 
-Ensure you have python installed on each target node, so: `sudo apt install python`
+Public Key::
+On AWS, the public key is automatically inserted in place for you. Nothing to do here.
+
+Python::
+The Ubuntu 16.04 image (e.g. "ami-674cbc1e") does not come with Python 2.7 out of the box.
+As such, the `/usr/bin/python` file, that Ansible depends on, is not found and you'll get
+an error message.
++
+The solution is to instruct Ansible to use `/usr/bin/python3` as the interpreter.
++
+NOTE: At the time of writing, Ansible's support of python3 is still in "tech preview" mode,
+so you'll need to test this yourselves. #workedForMe
++
+You can add this to your inventory file on each line of your hosts definition,
+or as a variable for all hosts (e.g. at the end of the file).
++
+----
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+----
+
