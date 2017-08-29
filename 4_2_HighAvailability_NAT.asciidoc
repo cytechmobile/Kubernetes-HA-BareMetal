@@ -94,3 +94,8 @@ to install appropriate monitors in place for this.
  `t2.nano`. Do take into account that the smaller instances have a considerably lower network
  bandwidth, so if you are experiencing some sort of bottleneck that you can't trace on the rest
  of your infra, you'll want to test that too!
+
++++<hr>+++
+
+Awesome! Now, time for the final piece of the puzzle:
+link:5_Persistent_Storage_GlusterFS.asciidoc[Persistent Storage Using GlusterFS].

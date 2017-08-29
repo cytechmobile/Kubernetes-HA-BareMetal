@@ -16,3 +16,8 @@ Sample inventory:
 pegasus      ansible_host=139.91.23.5 ip=139.91.23.5 disk_volume_device_1=/dev/mapper/pegasus--vg-lvol0
 ent      ansible_host=139.91.23.8 ip=139.91.23.8 disk_volume_device_1=/dev/mapper/ent--vg-lvol0
 ----
+
++++<hr>+++
+
+With all this done, you're now ready to start
+link:6_Deploying_On_Kubernetes.asciidoc[Deploying on Kubernetes]!

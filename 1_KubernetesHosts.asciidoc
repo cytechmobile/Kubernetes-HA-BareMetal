@@ -55,3 +55,8 @@ just any random set of IPs as the source of my traffic.
 
 Both these will be discussed in the next section:
 [High-Availability without AWS ELB].
++++<hr>+++
+
+Now that you have some hosts ready, you can
+link:2_Kubernetes_requirements.asciidoc[proceed with the rest of the requirements] before
+installing your Kubernetes cluster.

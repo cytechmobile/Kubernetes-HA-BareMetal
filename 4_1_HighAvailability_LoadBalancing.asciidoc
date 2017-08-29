@@ -142,3 +142,7 @@ automatically destroying the failed instances and starting new ones.
 
 I am not interested in this feature for the given use case and for the time being, so I am explicitly
 excluding it from my scope.
+
++++<hr>+++
+
+Done already? You can move on to the link:4_2_HighAvailability_NAT.asciidoc[HA NAT] section.

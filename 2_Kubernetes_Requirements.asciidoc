@@ -63,3 +63,8 @@ or as a variable for all hosts (e.g. at the end of the file).
 ansible_python_interpreter=/usr/bin/python3
 ----
 
++++<hr>+++
+
+Everything ready? Great!! Let's proceed with
+link:3_Installing_Kubernetes_Cluster.asciidoc[Installing the Kubernetes Cluster]!!
+
