@@ -1,5 +1,6 @@
 
 = Set Up Kubernetes Host Machines
+:numbered:
 
 The process of getting the hosts ready will clearly differ depending on whether you're
 actually on bare metal servers, or if you're running on some hosted servers
@@ -55,6 +56,7 @@ just any random set of IPs as the source of my traffic.
 
 Both these will be discussed in the next section:
 [High-Availability without AWS ELB].
+
 +++<hr>+++
 
 Now that you have some hosts ready, you can
