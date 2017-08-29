@@ -40,21 +40,3 @@ spec:
 
 1. You should now be able to access k8s_node_ip:30601
 
-= Set up GlusterFS cluster
-
-=== Create LVs
-
-Create a logical volume with 100GB to each server with the following command: ﻿`sudo lvcreate -L 100g <name-of the-volume-group>`
-The name of the volume group can be retrieved with the following command under VG column: `sudo lvs`
-
-=== Add GlusterFS to inventory
-
-Add the volume disk id, on the same line, for each host in your glusterfs cluster inventory:
-e.g. `disk_volume_device_1=/dev/mapper/ent--vg-lvol0`.
-
-Sample inventory:
-----
-[all]
-pegasus      ansible_host=139.91.23.5 ip=139.91.23.5 disk_volume_device_1=/dev/mapper/pegasus--vg-lvol0
-ent      ansible_host=139.91.23.8 ip=139.91.23.8 disk_volume_device_1=/dev/mapper/ent--vg-lvol0
-----
