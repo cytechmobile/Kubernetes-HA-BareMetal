@@ -6,9 +6,214 @@ In order to do this, we'll use `kubespray's` ansible playbooks, which involves t
 1. Telling Ansible where the playbooks will run (in Ansible terms this is called "creating the inventory")
 2. Editing some options for the playbooks
 
-== Create inventory for ansible playbooks
+== Create inventory for Ansible playbooks
 
-This can be created using a python script (you might need to install `python3` -- `brew install python3`), by running the following set of commands, available in the https://github.com/kubernetes-incubator/kubespray/blob/master/docs/getting-started.md#building-your-own-inventory[kubespray guide for building your own inventory].
+This can be created using a python script (you might need to install `python3` -- `brew install python3`),
+by running the following set of commands, available in the
+https://github.com/kubernetes-incubator/kubespray/blob/master/docs/getting-started.md#building-your-own-inventory[kubespray guide for building your own inventory].
+
+NOTE: If using `terraform` to set up your infra, this should be automatically generated for you.
+https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/terraform/aws/create-infrastructure.tf#L163-L186[See how, here].
+
+Once you have your inventory ready (don't forget the python interpreter setting from the previous section),
+it's time to let Ansible do the heavy lifting for you.
+
+== Running Ansible
+
+Getting Ansible to set up your Kubernetes cluster is as simple as:
+
+[source, bash]
+----
+ansible-playbook \
+  --inventory-file=my_inventory/hosts \ # <1>
+  kubespray/cluster.yml # <2>
+  --become \ # <3>
+  --user=ubuntu # <4>
+----
+<1> The inventory file (i.e. details about your hosts) that you created in the
+previous section.
+<2> The path to the kubespray `cluster.yml`
+<3> According to Ansible help this `run operations with become` - i.e. run with `su`
+<4> The user to connect as *to your kubernetes cluster hosts*. I am emphasizing this
+because I was confused what I should use in the case that the bastion hosts have a
+different user than the kubernetes hosts.
+
+NOTE: Leave the `efk` attribute to `false`, as we'll deploy our
+      own E(F)(L)K
+
+
+Now, even though this sounds straightforward enough, I had quite some trouble getting
+it to work when combined with *bastion hosts*.
+
+=== Using Bastion Hosts
+
+The kubespray deployment example also includes bastion hosts. The idea is you SSH
+into these hosts and from there (and only from there) you're allowed to ssh into the
+rest of your cluster.
+
+=== Flush cache
+
+`--flush-cache` option to your ansible run, after destroying and recreating.
+
+=== set ubuntu bootstrap_os
+
+Make *sure* to set the right value in your inventory's `group_vars/all.yml`
+file.
+
+HINT: If you don't and you're deploying on Ubuntu 16.04, you'll run into the
+`/usr/bin/python not found` error we explore below.
+
+=== Get SSH keys and sort out your ~/.kube/config
+
+There is currently an
+https://github.com/kubernetes-incubator/kubespray/issues/257[open issue] about
+setting up `kubectl` locally by automating the process of pulling
+down the keys from the first master node.
+
+As this is not available yet, we combined some of the solutions there and
+came up with link:ansible/kubectl_setup.yml[a couple of plays] that handle
+that for you.
+
+However, this is still WIP, so for the moment (PRs welcome!)
+you still need to edit the `~/.kube/config` file manually, in order to:
+
+1. add the IP of the master node under the clusters section
+1. Add the `insecure-skip-tls-verify: true` instead of the
+`certificate-authority` attribute to the cluster.
+
+
+=== deploy dashboard
+
+`kubectl apply -f kubernetes-dashboard/` from
+https://github.com/gregbkr/kubernetes-kargo-logging-monitoring[this
+amazing guide !]
+
+=== deploy service loadbalancer
+
+[source, bash]
+----
+$ kubectl apply -f service-loadbalancer-daemonset.yaml
+daemonset "service-loadbalancer" created
+service "lb-service" created
+
+# add role to as many *worker* nodes as you see fit,
+# good to have at least one in each AZ
+# (master nodes are unschedulable)
+
+$ kubectl label node ip-10-139-91-136 role=loadbalancer
+node "ip-10-139-91-136" labeled
+$ kubectl label node ip-10-139-92-222 role=loadbalancer
+node "ip-10-139-92-222" labeled
+$ kubectl label node ip-10-139-93-237 role=loadbalancer
+node "ip-10-139-93-237" labeled
+----
+
+
+
+=== Troubleshooting
+
+Some issues we came across during the process.
+
+=== SSH "Unreachable" errors
+
+These were pretty misleading, cause we *did* have SSH access. Testing manual
+access via SSH was fine.
+
+You might see errors like this:
+----
+fatal: [kubernetes-mcore-gluster1]: UNREACHABLE! => {"changed": false, "msg": "SSH Error: data could not be sent to remote host \"10.139.92.61\". Make sure this host can be reached over ssh", "unreachable": true}
+fatal: [kubernetes-mcore-gluster0]: UNREACHABLE! => {"changed": false, "msg": "SSH Error: data could not be sent to remote host \"10.139.91.152\". Make sure this host can be reached over ssh", "unreachable": true}
+----
+
+We even enabled the Ansible debug logs (by using `-vvv` on the command line)
+ and we copy-pasted the `ssh` command, which worked fine outside of Ansible.
+
+A good way to verify you are having the same problem, is by utilizing the
+Ansible `ping` module (available out of the box).
+
+----
+`ansible gfs-cluster -m ping -i my_inventory/mcore_hosts -u ubuntu`
+kubernetes-mcore-gluster1 | FAILED! => {
+    "changed": false,
+    "failed": true,
+    "module_stderr": "/bin/sh: 1: /usr/bin/python: not found\n",
+    "module_stdout": "",
+    "msg": "MODULE FAILURE",
+    "rc": 127
+}
+kubernetes-mcore-gluster0 | FAILED! => {
+    "changed": false,
+    "failed": true,
+    "module_stderr": "/bin/sh: 1: /usr/bin/python: not found\n",
+    "module_stdout": "",
+    "msg": "MODULE FAILURE",
+    "rc": 127
+}
+----
+
+The issue therefore was not related to SSH at all! In fact the issue
+was that `/usr/bin/python` was not available on the hosts.
+
+These hosts are started from the official Ubuntu 16.04 EC2 AMIs, where only
+`python3` exists is available out of the box.
+
+There are 2 solutions:
+
+1. Set the Ansible python interpreter to `python3`
+
+E.g. like so (in your inventory file)
+
+----
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+----
+
+2. Have Ansible install python 2 for you before gathering facts.
+
+
+
+==== Kube scheduler failures
+
+During some of the initial ansible runs, we got:
+
+[source, bash]
+----
+RUNNING HANDLER [kubernetes/master : Master | wait for kube-scheduler] ***********************************************************************************************************************************
+Wednesday 06 September 2017  12:35:20 +0300 (0:00:00.073)       0:39:54.652 ***
+FAILED - RETRYING: Master | wait for kube-scheduler (60 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (60 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (60 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (59 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (59 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (59 retries left).
+...
+fatal: [kubernetes-mcore-master2]: FAILED! => {"attempts": 60, "changed": false, "content": "", "failed": true, "msg": "Status code was not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://localhost:10251/healthz"}
+FAILED - RETRYING: Master | wait for kube-scheduler (3 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (13 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (2 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (12 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (1 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (11 retries left).
+fatal: [kubernetes-mcore-master1]: FAILED! => {"attempts": 60, "changed": false, "content": "", "failed": true, "msg": "Status code was not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://localhost:10251/healthz"}
+FAILED - RETRYING: Master | wait for kube-scheduler (10 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (9 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (8 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (7 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (6 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (5 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (4 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (3 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (2 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (1 retries left).
+fatal: [kubernetes-mcore-master0]: FAILED! => {"attempts": 60, "changed": false, "content": "", "failed": true, "msg": "Status code was not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://localhost:10251/healthz"}
+----
+
+The problem turned out to be that the EC2 instances did not have enough
+resources (we were trying out if `t2.micro` would be enough in terms of memory
+/ compute).
+
+The solution was to upgrade to `t2.small`.
+
 
 +++<hr>+++
 

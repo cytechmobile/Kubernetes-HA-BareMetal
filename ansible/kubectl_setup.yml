@@ -1,0 +1,34 @@
+---
+- hosts: kube-master[0]
+  gather_facts: no
+  become: yes
+  tasks:
+    - fetch:
+        src: "/etc/kubernetes/ssl/{{ item }}.pem"
+        dest: "{{ playbook_dir }}/kubectl/{{ client_name }}/{{ item }}.pem"
+        flat: True
+      with_items:
+        - admin-{{ inventory_hostname }}-key
+        - admin-{{ inventory_hostname }}
+        - ca
+    - name: export hostname
+      set_fact:
+        kubectl_name: "{{ inventory_hostname }}"
+
+- hosts: localhost
+  connection: local
+  vars:
+    kubectl_name: "{{ hostvars[groups['kube-master'][0]].kubectl_name }}"
+  tasks:
+    - name: check if context exists
+      command: kubectl config get-contexts mcore-{{ client_name }}
+      register: kctl
+      failed_when: kctl.rc == 0
+    - block:
+      - name: create cluster mcore-{{ client_name }}
+        command: kubectl config set-cluster mcore-{{ client_name }}-cluster --certificate-authority={{ playbook_dir }}/kubectl/{{ client_name }}/ca.pem
+      - name: create credentials mcore-{{ client_name }}-admin
+        command: kubectl config set-credentials mcore-{{ client_name }}-admin --certificate-authority={{ playbook_dir }}/kubectl/{{ client_name }}/ca.pem --client-key={{ playbook_dir }}/kubectl/{{ client_name }}/admin-{{ kubectl_name }}-key.pem --client-certificate={{ playbook_dir }}/kubectl/{{ client_name }}/admin-{{ kubectl_name }}.pem
+      - name: create context mcore-{{ client_name }}
+        command: kubectl config set-context mcore-{{ client_name }} --cluster=mcore-{{ client_name }}-cluster --user=mcore-{{ client_name }}-admin
+      when: kctl.rc != 0
