@@ -53,8 +53,7 @@ peers to whitelist just your IPs.
 I will provide a different solution to satisfy this constraint, as I can't afford to have
 just any random set of IPs as the source of my traffic.
 
-Both these will be discussed in the next section:
-[High-Availability without AWS ELB].
+Both these will be discussed in the next section.
 
 +++<hr>+++
 
