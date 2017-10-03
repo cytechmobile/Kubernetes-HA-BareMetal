@@ -1,5 +1,12 @@
 = Set up GlusterFS cluster
 
+WARNING: GlusterFS is not recommended for deploying Elasticsearch. Here's
+some more info on that:
+https://bugzilla.redhat.com/show_bug.cgi?id=1430659#c2[link1], and
+https://forums.rancher.com/t/glusterfs-and-elasticsearch/2293/6[link2].
+The only approach we found that sounded close to what we want is
+https://pkalever.wordpress.com/2016/11/18/elasticsearch-with-gluster-block-storage/[link3]
+but we had no time to look into this in more detail.
 
 == Create LVs on Metal
 
