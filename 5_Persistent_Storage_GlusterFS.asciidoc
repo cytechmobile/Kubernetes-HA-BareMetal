@@ -1,11 +1,20 @@
 = Set up GlusterFS cluster
 
-=== Create LVs
+
+== Create LVs on Metal
 
 Create a logical volume with 100GB to each server with the following command: ﻿`sudo lvcreate -L 100g <name-of the-volume-group>`
 The name of the volume group can be retrieved with the following command under VG column: `sudo lvs`
 
-=== Add GlusterFS to inventory
+== Create LVs on AWS
+
+=== Command-line way
+
+[source, bash]
+----
+sudo vgcreate worker3 /dev/xvdf
+sudo lvcreate -L 9g worker3
+----
 
 Add the volume disk id, on the same line, for each host in your glusterfs cluster inventory:
 e.g. `disk_volume_device_1=/dev/mapper/ent--vg-lvol0`.
@@ -16,6 +25,72 @@ Sample inventory:
 pegasus      ansible_host=139.91.23.5 ip=139.91.23.5 disk_volume_device_1=/dev/mapper/pegasus--vg-lvol0
 ent      ansible_host=139.91.23.8 ip=139.91.23.8 disk_volume_device_1=/dev/mapper/ent--vg-lvol0
 ----
+
+----
+[gfs-cluster]
+kube-node
+
+[network-storage:children]
+gfs-cluster
+----
+
+Basically, for each Kubernetes PV you want to add to glusterFS, you
+ will need to follow this procedure:
+
+1. Add extra EBS volumes and attach them to existing EC2 instances
+(Similarly need extra LVMs, on bare metal)
+2. Add the device mapping to ansible inventory, incrementing the
+`disk_volume_device` number
+
+
+=== Troubleshooting
+
+
+==== Allow non-root users to write to glusterfs volumes
+
+As long as your container is running under `root`, you're fine.
+Alas, that's not the case for all containers (hello Elasticsearch!).
+
+We have encountered what seems to be a pretty common issue, as you can
+see from the following links:
+
+* https://github.com/gluster/glusterfs/issues/262
+* https://github.com/kubernetes/kubernetes/issues/40180
+
+One solution:
+
+set owner / group id **on the gluster volume** and on the node
+set https://gluster.readthedocs.io/en/latest/Administrator%20Guide/Access%20Control%20Lists/[Access Control Lists].
+
+Second solution:
+
+chown ???
+
+third solution:
+
+`gluster volume set $VOLUME allow-insecure on`
+
+https://joejulian.name/blog/mounting-a-glusterfs-volume-as-an-unprivileged-user/
+
+In the end, we managed to overcome this by using both the below on the PVC:
+
+[source,yaml]
+----
+  annotations:
+    pv.beta.kubernetes.io/gid: "1234"
+----
+
+AND adding the following security context on the `spec` of the **Pod**
+(not the container) that is using the PVC
+
+[source,yaml]
+----
+  securityContext:
+    supplementalGroups: [1000]
+    fsGroup: 1000
+----
+
+
 
 +++<hr>+++
 
