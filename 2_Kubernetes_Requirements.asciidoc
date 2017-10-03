@@ -36,9 +36,9 @@ sudo service ssh restart
 ----
 
 IP forwarding::
-Follow instructions in http://www.ducea.com/2006/08/01/how-to-enable-ip-forwarding-in-linux/[this article] to check if it's enabled and how to do so.
-
-Python:: Ensure you have python installed on each target node, so: `sudo apt install python-minimal`
+Follow instructions in
+http://www.ducea.com/2006/08/01/how-to-enable-ip-forwarding-in-linux/[this article]
+to check if it's enabled and how to do so.
 
 == AWS EC2
 
