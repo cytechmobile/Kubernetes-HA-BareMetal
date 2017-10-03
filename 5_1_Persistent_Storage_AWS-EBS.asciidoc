@@ -1,0 +1,59 @@
+= Dynamic Provisioning of AWS EBS Volumes
+
+Even though originally, we wanted no dependency on AWS, For our persistent storage of our Elasticsearch cluster, we will use dynamically
+provisioned AWS EBS volumes.
+
+== 1. IAM Roles and Policies
+
+Make sure to include the kubespray-bundled roles and IAM policies.
+
+== 2. Set the `cloud_provider` param
+
+on the command line, this is set as `--cloud-provider=aws`, but kubespray
+also has an option in its `all.yml` properties file, so you'll need to set:
+
+`cloud_provider: aws` (note the `_` vs `-` ).
+
+NOTE: Without this attribute, even if you have created the `StorageClass` (see below)
+you will get `"no volume plugin matched"` errors
+in the `kube-controller-manager` logs (took me a while to find out where
+these logs are...)
+
+
+== 3. Enable Dynamic Provisioning
+
+This is enabled by adding a plugin for provisioning volumes. This
+comes in the form of a `StorageClass`.
+
+Here is an example:
+
+[source, yaml]
+----
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: ebs
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+  zones: eu-west-1a, eu-west-1b, eu-west-1c
+----
+
+== 4. Get your first Persistent Volume
+
+This will be automatically
+
+[source, yaml]
+----
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: pvc-engineering
+spec:
+ accessModes:
+  - ReadWriteMany
+ resources:
+   requests:
+     storage: 10Gi
+ storageClassName: ebs
+----
