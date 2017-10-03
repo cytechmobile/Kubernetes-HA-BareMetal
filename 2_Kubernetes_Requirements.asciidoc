@@ -45,23 +45,14 @@ to check if it's enabled and how to do so.
 Public Key::
 On AWS, the public key is automatically inserted in place for you. Nothing to do here.
 
-Python::
-The Ubuntu 16.04 image (e.g. "ami-674cbc1e") does not come with Python 2.7 out of the box.
-As such, the `/usr/bin/python` file, that Ansible depends on, is not found and you'll get
-an error message.
-+
-The solution is to instruct Ansible to use `/usr/bin/python3` as the interpreter.
-+
-NOTE: At the time of writing, Ansible's support of python3 is still in "tech preview" mode,
-so you'll need to test this yourselves. #workedForMe
-+
-You can add this to your inventory file on each line of your hosts definition,
-or as a variable for all hosts (e.g. at the end of the file).
-+
+NOTE: A note on Python. Kubespray will handle that for you, as long as you set the
+`bootstrap_os` variable (in `group_vars/all.yml`). We're setting up on Ubuntu, so:
+
 ----
-[all:vars]
-ansible_python_interpreter=/usr/bin/python3
+bootstrap_os: ubuntu
 ----
+
+ensures Python is now installed.
 
 +++<hr>+++
 
