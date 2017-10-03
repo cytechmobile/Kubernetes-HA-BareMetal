@@ -1,21 +1,22 @@
 
 = Logging using Elasticsearch, Fluentd, Kibana (EFK)
 
-If you want to direct logs to an elasticsearch cluster, there is a simple option in kubespray to enable this - WHICH I AM NOT USING. You're supposed to edit file: `my_inventory/group_vars/k8s-cluster.yml` and find the `efk_enabled` attribute, making sure it is set to true.
+If you want to direct logs to an elasticsearch cluster, there is a simple option in kubespray to enable this - WHICH I AM NOT USING.
 
-However, I found a couple of things I didn't like with this approach:
-1. elasticsearch and kibana versions used are still too old (2.4.x)
-1. they're deployed in the `kube-system` namespace. I'd like them in their separate namespace.
-1. `kibana` is deployed with a `KIBANA_BASE_URL` attribute, so it can be served using `kubectl proxy`, but I don't want it limited that way.
-
-In search of a better solution, I found this https://github.com/gregbkr/kubernetes-kargo-logging-monitoring.git[very interesting guide], however I was not able to deploy the `Logging` solution, due to an issue with the persistent volume.
+You're supposed to edit file: `my_inventory/group_vars/k8s-cluster.yml` and find the `efk_enabled` attribute, making sure it is set to true.
 
 ----
 # Monitoring apps for k8s
 efk_enabled: true
 ----
 
-Now, you can rerun the playbook.
+
+However, we found a couple of things we didn't like with this approach:
+1. elasticsearch and kibana versions used are still too old (2.4.x)
+1. they're deployed in the `kube-system` namespace. We'd like them in their separate namespace.
+1. `kibana` is deployed with a `KIBANA_BASE_URL` attribute, so it can be served using `kubectl proxy`, but I don't want it limited that way.
+
+Even so, here is how we got this to work:
 
 After playbook has finished, you need to manually change a couple of things.
 
@@ -40,3 +41,82 @@ spec:
 
 1. You should now be able to access k8s_node_ip:30601
 
+
+== Alternative EFK deployment
+
+In search of a better solution, we came across this
+https://github.com/gregbkr/kubernetes-kargo-logging-monitoring.git[very
+interesting guide], however we were not able to deploy the `Logging` solution,
+due to an issue with the persistent volume.
+
+In the end, this only worked after having set up Dynamic Provisioning
+through EBS Volumes.
+
+
+
+== Pulling Images from Private Docker Registry
+
+You need a couple of things:
+
+1. Set up a K8s `secret` for authentication to the registry
+1. Define the private registry docker image on the pod
+1. (Optional) HTTP access
+
+=== Authentication
+
+Normally, you would use `docker login`, but in the Kubernetes world, the solution
+is to use the `imagePullSecrets` attribute on the `Pod`.
+
+The way this works is that when trying to download the image, it will attempt to
+authenticate with the docker registry, using a Kubernetes `Secret` that you must
+have previously created.
+
+[source, bash]
+----
+$ kubectl create secret \
+  docker-registry \
+  myregistrykey \
+  --docker-server=DOCKER_REGISTRY_SERVER \
+  --docker-username=DOCKER_USER \
+  --docker-password=DOCKER_PASSWORD \
+  --docker-email=DOCKER_EMAIL
+----
+
+
+=== Define the image
+
+Great, now you can proceed with defining the `Pod` that will consume this secret
+when pulling down the image from the private registry.
+
+----
+    spec:
+      containers:
+      - args:
+        - -r
+        image: docker.mcore.cloud:5005/mcore/logstash:5.5.2
+        name: logstash
+        resources: {}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - mountPath: /usr/share/logstash/config
+          name: logstash-config-volume
+        - mountPath: /usr/share/logstash/pipeline/jdbc.conf
+          name: logstash-pipeline-volume
+          subPath: jdbc.conf
+        - mountPath: /usr/share/logstash/pipeline/sql
+          name: logstash-sql-volume
+        - mountPath: /usr/share/logstash/pipeline/lastrun
+          name: logstash-pvc
+      imagePullSecrets:
+        - name: cytech-gitlab-key
+----
+
+
+=== HTTP Access
