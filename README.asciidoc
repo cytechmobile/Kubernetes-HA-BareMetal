@@ -34,5 +34,5 @@ link:6_Deploying_On_Kubernetes.asciidoc[Deploying on Kubernetes]:: Finally, we'l
 
 +++<hr>+++
 
-Let's start by link:1_KubernetesHosts.asciidoc[Setting Up the Hosts] on which
+Let's start by link:1_Kubernetes_Hosts.asciidoc[Setting Up the Hosts] on which
 we'll install our Kubernetes cluster!
