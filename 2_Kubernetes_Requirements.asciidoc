@@ -1,4 +1,6 @@
-= Requirements
+= Chapter II. K8s Requirements
+:sectnums:
+:sectanchors:
 
 The approach we will use for setting up the Kubernetes cluster is based on the
 https://github.com/kubernetes-incubator/kubespray/[kubernetes-incubator/kubespray] project,

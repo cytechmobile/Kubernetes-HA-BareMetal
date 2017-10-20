@@ -1,4 +1,6 @@
-= High Availability Outside the Cloud
+= Chapter IV. High Availability Outside the Cloud
+:sectnums:
+:sectanchors:
 
 This section will cover how network traffic is routed in and out of the cluster in an HA way.
 

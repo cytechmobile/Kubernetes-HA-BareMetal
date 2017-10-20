@@ -1,5 +1,7 @@
 
-= Set Up Kubernetes Host Machines
+= Chapter I. Kubernetes Host Machines
+:sectnums:
+:sectanchors:
 
 The process of getting the hosts ready will clearly differ depending on whether you're
 actually on bare metal servers, or if you're running on some hosted servers

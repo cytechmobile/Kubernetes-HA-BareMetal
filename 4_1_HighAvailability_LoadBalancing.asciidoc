@@ -1,4 +1,6 @@
-= Load Balancing Incoming Traffic
+:sectanchors:
+
+== Load Balancing Incoming Traffic
 
 Ok, let's decompose this into the following 3 steps:
 
@@ -11,7 +13,6 @@ https://github.com/kubernetes/contrib/tree/master/service-loadbalancer[Kubernete
 
 _The Service LoadBalancer is essentially deployed as a Pod *within* the k8s cluster, so we will first
 need to look at how an incoming request will reach that specific pod._
-
 
 == DNS Resolution (DNS => Host)
 

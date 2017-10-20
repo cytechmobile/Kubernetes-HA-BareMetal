@@ -1,5 +1,7 @@
+:sectnums:
+:sectanchors:
 
-= Logging using Elasticsearch, Fluentd, Kibana (EFK)
+= Chapter VI. Logging using Elasticsearch, Fluentd, Kibana (EFK)
 
 If you want to direct logs to an elasticsearch cluster, there is a simple option in kubespray to enable this - WHICH I AM NOT USING.
 
@@ -24,6 +26,7 @@ After playbook has finished, you need to manually change a couple of things.
 1. Edit the Kibana service, changing the type from `ClusterIP` to `NodePort`, so you can access it from outside the cluster. Also
 
 ----
+
 ---
 apiVersion: v1
 kind: Service

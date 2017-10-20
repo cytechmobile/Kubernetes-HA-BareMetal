@@ -1,3 +1,6 @@
+:sectnums:
+:sectanchors:
+
 = Dynamic Provisioning of AWS EBS Volumes
 
 Even though originally, we wanted no dependency on AWS, for our persistent storage of our Elasticsearch cluster, we
@@ -12,9 +15,9 @@ Make sure to include the kubespray-bundled roles and IAM policies.
 on the command line, this is set as `--cloud-provider=aws`, but kubespray
 also has an option in its `all.yml` properties file, so you'll need to set:
 
-`cloud_provider: aws` (note the `_` vs `-` ).
+`cloud_provider: aws` (*note the `_` vs `-` in the different way the var is set*).
 
-NOTE: Without this attribute, even if you have created the `StorageClass` (see below)
+WARNING: Without this attribute, even if you have created the `StorageClass` (see below)
 you will get `"no volume plugin matched"` errors
 in the `kube-controller-manager` logs (took me a while to find out where
 these logs are...)

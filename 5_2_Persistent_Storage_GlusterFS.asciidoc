@@ -1,3 +1,6 @@
+:sectnums:
+:sectanchors:
+
 = Set up GlusterFS cluster
 
 WARNING: GlusterFS is not recommended for deploying Elasticsearch. Here's

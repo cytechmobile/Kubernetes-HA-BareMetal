@@ -1,3 +1,5 @@
+:sectanchors:
+
 = NATing outgoing traffic
 
 As we mentioned above, there are 2 main reasons we are considering, for which you would need to use

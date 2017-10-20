@@ -1,4 +1,6 @@
-= 3. Install Kubernetes Cluster
+= Chapter III. Install Kubernetes Cluster
+:sectnums:
+:sectanchors:
 
 Now it's time to proceed with the installation of the actual cluster.
 

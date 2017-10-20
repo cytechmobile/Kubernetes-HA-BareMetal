@@ -1,0 +1,23 @@
+= Chapter V. Persistent Storage for K8s
+
+There's a whole bunch of applications that store data you really, absolutely, definitely, 100%
+won't want to lose. For those apps, you'll need to have Kubernetes assign them some persistent storage.
+
+== Prerequisites
+
+Before moving on, please make yourself familiar with the storage options offered by Kubernetes:
+
+* https://kubernetes.io/docs/concepts/storage/volumes/[Kubernetes Volumes]
+* https://kubernetes.io/docs/concepts/storage/persistent-volumes/[Kubernetes Persistent Volumes]
+* http://blog.kubernetes.io/2016/10/dynamic-provisioning-and-storage-in-kubernetes.html[Dynamic Provisioning]
+
+Depending on your deployment environment (Public Cloud, Private Cloud, or bare metal on-prem installation),
+you will need to select a suitable https://kubernetes
+.io/docs/concepts/storage/persistent-volumes/#storageclasses[Backing Storage type].
+
++++<hr>+++
+
+Awesome! After all that reading, let's get back to hands on:
+
+* link:5_1_Persistent_Storage_AWS-EBS.asciidoc[Persistent Storage on AWS].
+* link:5_2_Persistent_Storage_GlusterFS.asciidoc[Persistent Storage w/ GlusterFS].
