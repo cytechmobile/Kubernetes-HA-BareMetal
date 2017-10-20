@@ -26,7 +26,7 @@ link:4_0_HighAvailability_Outside_Cloud.asciidoc[High-Availability without AWS E
 an HA way to bring traffic into your cluster. Your best option is to use one of the
 cloud providers' Load Balancers (e.g. AWS ELB), but what if you can't / don't want to?
 
-link:5_0_Persistent_Storage_for_K8s.asciidoc[Set Up Persistent Storage using GlusterFS]:: At some point, some apps
+link:5_0_Persistent_Storage_for_K8s.asciidoc[Set Up Persistent Storage for K8s]:: At some point, some apps
 will need some persistent storage (that can even survive K8s cluster restarts). GlusterFS is nice like that and
 can help you with this.
 
