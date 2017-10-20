@@ -98,4 +98,4 @@ hard by this* and we did have to install appropriate monitors in place.
 +++<hr>+++
 
 Awesome! Now, time for the final piece of the puzzle:
-link:5_Persistent_Storage_GlusterFS.asciidoc[Persistent Storage Using GlusterFS].
+link:5_0_Persistent_Storage_for_K8s.asciidoc[Persistent Storage for Kubernetes].

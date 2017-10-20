@@ -22,4 +22,4 @@ We've put together some instructions for each:
 * link:4_2_HighAvailability_NAT.asciidoc[High Availability NAT]
 
 Or, you may want to skip ahead to
-link:5_Persistent_Storage_GlusterFS.asciidoc[Persistent Storage Using GlusterFS].
+link:5_0_Persistent_Storage_for_K8s.asciidoc[Persistent Storage for Kubernetes].
