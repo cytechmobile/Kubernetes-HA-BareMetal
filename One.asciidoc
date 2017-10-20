@@ -1,6 +1,7 @@
 :sectnums:
 :sectanchors:
 :sectnumlevels: 5
+:toc:
 
 [book]
 = Kubernetes HA, using Kubespray
@@ -15,7 +16,7 @@ for each of the respective sections below.
 
 _Note: This guide is still being refined. Feedback is welcome!_
 
-+++<hr>+++
+== Introduction
 
 This guide is structured as follows:
 
