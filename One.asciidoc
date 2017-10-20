@@ -1,0 +1,882 @@
+:sectnums:
+:sectanchors:
+:sectnumlevels: 5
+
+[book]
+= Kubernetes HA, using Kubespray
+
+A guide to an HA deployment of Kubernetes, using
+https://github.com/kubernetes-incubator/kubespray[Kubespray] and *as few cloud components as possible*!
+
+This is a conscious decision. We know life is easier in the cloud, yet we must also be able to deploy on-prem.
+
+As such, we follow a dual approach, providing instructions for both a deployment on AWS, as well as Bare Metal
+for each of the respective sections below.
+
+_Note: This guide is still being refined. Feedback is welcome!_
+
++++<hr>+++
+
+This guide is structured as follows:
+
+link:1_Kubernetes_Hosts.asciidoc[Set Up Kubernetes Host Machines]:: Prepare the hosts, before installing kubernetes,
+depending on if you're using bare metal, virtual private servers, EC2 instances, etc.
+
+link:2_Kubernetes_Requirements.asciidoc[Requirements]:: A couple of basic things you'll need to take
+care of before beginning to install your cluster.
+
+link:3_Installing_Kubernetes_Cluster.asciidoc[Install Kubernetes]:: Use the Ansible playbooks / recipes provided by the Kubespray
+project, in order to set up your Kubernetes cluster.
+
+link:4_0_HighAvailability_Outside_Cloud.asciidoc[High-Availability without AWS ELB]:: Even if you have an HA K8s cluster, you still need
+an HA way to bring traffic into your cluster. Your best option is to use one of the
+cloud providers' Load Balancers (e.g. AWS ELB), but what if you can't / don't want to?
+
+link:5_0_Persistent_Storage_for_K8s.asciidoc[Set Up Persistent Storage for K8s]:: At some point, some apps
+will need some persistent storage (that can even survive K8s cluster restarts). GlusterFS is nice like that and
+can help you with this.
+
+link:6_Deploying_On_Kubernetes.asciidoc[Deploying on Kubernetes]:: Finally, we'll look at how to deploy some basic apps on Kubernetes.
+
++++<hr>+++
+
+Let's start by link:1_Kubernetes_Hosts.asciidoc[Setting Up the Hosts] on which
+we'll install our Kubernetes cluster!
+
+
+== Kubernetes Host Machines
+
+The process of getting the hosts ready will clearly differ depending on whether you're
+actually on bare metal servers, or if you're running on some hosted servers
+(e.g. VPS, EC2 instances, etc.)
+
+=== Select Operating System for Kubernetes Hosts
+
+Docker is known to have several issues with different Linux kernel versions. One thing
+we learnt (the hard way) is that `One does not simply run Docker on Linux` (and expect
+a production-grade system).
+
+We would recommend you stay with one of the supported OS versions that Kubespray supports.
+
+Namely: *Ubuntu* and *CoreOS*. We chose Ubuntu, due to previous familiarity with the distro.
+
+
+=== Bare Metal
+
+Clearly, the first step after you wire up the servers on your rack is to install the
+operating system. In our case this was Ubuntu 16.04, so
+link:Ubuntu_16_04_server_os_install.asciidoc[I wrote down the steps], in case you have
+any doubts.
+
+=== AWS EC2 (without ELB / NAT Gateway)
+
+EC2 (ok, and VPC) is all we'll be using out of Amazon's services, to ensure we can easily
+transfer somewhere else.
+
+Now, you _could_ just go on the AWS web console, start a bunch of `ubuntu 16.04` instances,
+tag/name them appropriately and give them to Ansible (the next step), but... why would you?
+
+We have `Terraform` for that. In fact, the
+https://github.com/kubernetes-incubator/kubespray[Kubespray repo] even has a terraform
+example for AWS ready for you!
+
+BUT... it uses the AWS ELB and NAT gateway. Deal breakers for us here, so what are we to do
+but roll our own ?
+
+AWS ELB:: Amazon's elastic load balancer is used to bring internet traffic into your k8s
+cluster.
++
+We hereby provide an HA solution that is based on the
+https://github.com/kubernetes/contrib/tree/master/service-loadbalancer[Kubernetes Service LoadBalancer].
+
+
+NAT Gateway:: The Kubespray example deploys all of the Kubernetes cluster on a private
+subnet, meaning the EC2 instances don't have public IPs. Amazon's NAT gateway offers a
+way to NAT your traffic to a set of Elastic IPs, allowing - amongst other things - your
+peers to whitelist just your IPs.
++
+We will provide a different solution to satisfy this constraint, as we can't afford to have
+just any random set of IPs as the source of our traffic.
+
+Both these will be discussed in the next section.
+
++++<hr>+++
+
+Now that you have some hosts ready, you can
+link:2_Kubernetes_Requirements.asciidoc[proceed with the rest of the requirements] before
+installing your Kubernetes cluster.
+
+
+== K8s Requirements
+
+The approach we will use for setting up the Kubernetes cluster is based on the
+https://github.com/kubernetes-incubator/kubespray/[kubernetes-incubator/kubespray] project,
+with a couple of differentiations.
+
+First of all, let's take care of the `kubespray` requirements.
+
+As explained in the
+https://github.com/kubernetes-incubator/kubespray#requirements[kubespray requirements] doc,
+you need to set up a couple of things before asking `kubespray` to set up your k8s cluster.
+
+
+First and foremost, you need to install Ansible on the machine that you will be using to initiate
+the installation. This is probably your workstation. (On macOS, installation is as simple as
+`brew install ansible`).
+
+=== Bare Metal
+
+Public Key Access:: Having already installed the OS and having ssh access to the servers,
+we'll copy our public key to each of the target servers, for easier access:
++
+[bash]
+----
+cat ~/.ssh/<your_key>.pub
+#copy this value
+ssh root@<node>
+mkdir .ssh
+vi .ssh/authorized_keys
+# paste the public key
+
+#Now ensure we have enabled use of authorized_keys file
+vi /etc/ssh/sshd_config
+#uncomment the line for Authorized keys
+sudo service ssh restart
+----
+
+IP forwarding::
+Follow instructions in
+http://www.ducea.com/2006/08/01/how-to-enable-ip-forwarding-in-linux/[this article]
+to check if it's enabled and how to do so.
+
+=== AWS EC2
+
+Public Key::
+On AWS, the public key of the EC2 key pair you will use, is automatically inserted in
+place for you. Nothing to do here.
+
+NOTE: A note on Python. Kubespray will handle that for you, as long as you set the
+`bootstrap_os` variable (in `group_vars/all.yml`). We're setting up on Ubuntu, so:
+
+----
+bootstrap_os: ubuntu
+----
+
+ensures Python is now installed.
+
++++<hr>+++
+
+Everything ready? Great!! Let's proceed with
+link:3_Installing_Kubernetes_Cluster.asciidoc[Installing the Kubernetes Cluster]!!
+
+== Install Kubernetes Cluster
+
+Now it's time to proceed with the installation of the actual cluster.
+
+In order to do this, we'll use `kubespray's` ansible playbooks, which involves two steps:
+1. Telling Ansible where the playbooks will run (in Ansible terms this is called "creating the inventory")
+2. Editing some options for the playbooks
+
+=== Create inventory for Ansible playbooks
+
+This can be created using a python script (you might need to install `python3` -- `brew install python3`),
+by running the following set of commands, available in the
+https://github.com/kubernetes-incubator/kubespray/blob/master/docs/getting-started.md#building-your-own-inventory[kubespray guide for building your own inventory].
+
+NOTE: If using `terraform` to set up your infra, this should be automatically generated for you.
+https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/terraform/aws/create-infrastructure.tf#L163-L186[See how, here].
+
+Once you have your inventory ready (don't forget the python interpreter setting from the previous section),
+it's time to let Ansible do the heavy lifting for you.
+
+=== Running Ansible
+
+Getting Ansible to set up your Kubernetes cluster is as simple as:
+
+[source, bash]
+----
+ansible-playbook \
+  --inventory-file=my_inventory/hosts \ # <1>
+  kubespray/cluster.yml # <2>
+  --become \ # <3>
+  --user=ubuntu # <4>
+----
+<1> The inventory file (i.e. details about your hosts) that you created in the
+previous section.
+<2> The path to the kubespray `cluster.yml`
+<3> According to Ansible help this `run operations with become` - i.e. run with `su`
+<4> The user to connect as *to your kubernetes cluster hosts*. I am emphasizing this
+because I was confused what I should use in the case that the bastion hosts have a
+different user than the kubernetes hosts.
+
+NOTE: Leave the `efk` attribute to `false`, as we'll deploy our
+      own E(F)(L)K
+
+
+Now, even though this sounds straightforward enough, I had quite some trouble getting
+it to work when combined with *bastion hosts*.
+
+==== Using Bastion Hosts
+
+The kubespray deployment example also includes bastion hosts. The idea is you SSH
+into these hosts and from there (and only from there) you're allowed to ssh into the
+rest of your cluster.
+
+==== Flush cache
+
+`--flush-cache` option to your ansible run, after destroying and recreating.
+
+==== set ubuntu bootstrap_os
+
+Make *sure* to set the right value in your inventory's `group_vars/all.yml`
+file.
+
+HINT: If you don't and you're deploying on Ubuntu 16.04, you'll run into the
+`/usr/bin/python not found` error we explore below.
+
+==== Get SSH keys and sort out your ~/.kube/config
+
+There is currently an
+https://github.com/kubernetes-incubator/kubespray/issues/257[open issue] about
+setting up `kubectl` locally by automating the process of pulling
+down the keys from the first master node.
+
+As this is not available yet, we combined some of the solutions there and
+came up with link:ansible/kubectl_setup.yml[a couple of plays] that handle
+that for you.
+
+However, this is still WIP, so for the moment (PRs welcome!)
+you still need to edit the `~/.kube/config` file manually, in order to:
+
+1. add the IP of the master node under the clusters section
+1. Add the `insecure-skip-tls-verify: true` instead of the
+`certificate-authority` attribute to the cluster.
+
+
+==== deploy dashboard
+
+`kubectl apply -f kubernetes-dashboard/` from
+https://github.com/gregbkr/kubernetes-kargo-logging-monitoring[this
+amazing guide !]
+
+==== deploy service loadbalancer
+
+[source, bash]
+----
+$ kubectl apply -f service-loadbalancer-daemonset.yaml
+daemonset "service-loadbalancer" created
+service "lb-service" created
+
+# add role to as many *worker* nodes as you see fit,
+# good to have at least one in each AZ
+# (master nodes are unschedulable)
+
+$ kubectl label node ip-10-139-91-136 role=loadbalancer
+node "ip-10-139-91-136" labeled
+$ kubectl label node ip-10-139-92-222 role=loadbalancer
+node "ip-10-139-92-222" labeled
+$ kubectl label node ip-10-139-93-237 role=loadbalancer
+node "ip-10-139-93-237" labeled
+----
+
+
+
+==== Troubleshooting
+
+Some issues we came across during the process.
+
+==== SSH "Unreachable" errors
+
+These were pretty misleading, cause we *did* have SSH access. Testing manual
+access via SSH was fine.
+
+You might see errors like this:
+----
+fatal: [kubernetes-mcore-gluster1]: UNREACHABLE! => {"changed": false, "msg": "SSH Error: data could not be sent to remote host \"10.139.92.61\". Make sure this host can be reached over ssh", "unreachable": true}
+fatal: [kubernetes-mcore-gluster0]: UNREACHABLE! => {"changed": false, "msg": "SSH Error: data could not be sent to remote host \"10.139.91.152\". Make sure this host can be reached over ssh", "unreachable": true}
+----
+
+We even enabled the Ansible debug logs (by using `-vvv` on the command line)
+ and we copy-pasted the `ssh` command, which worked fine outside of Ansible.
+
+A good way to verify you are having the same problem, is by utilizing the
+Ansible `ping` module (available out of the box).
+
+----
+`ansible gfs-cluster -m ping -i my_inventory/mcore_hosts -u ubuntu`
+kubernetes-mcore-gluster1 | FAILED! => {
+    "changed": false,
+    "failed": true,
+    "module_stderr": "/bin/sh: 1: /usr/bin/python: not found\n",
+    "module_stdout": "",
+    "msg": "MODULE FAILURE",
+    "rc": 127
+}
+kubernetes-mcore-gluster0 | FAILED! => {
+    "changed": false,
+    "failed": true,
+    "module_stderr": "/bin/sh: 1: /usr/bin/python: not found\n",
+    "module_stdout": "",
+    "msg": "MODULE FAILURE",
+    "rc": 127
+}
+----
+
+The issue therefore was not related to SSH at all! In fact the issue
+was that `/usr/bin/python` was not available on the hosts.
+
+These hosts are started from the official Ubuntu 16.04 EC2 AMIs, where only
+`python3` exists is available out of the box.
+
+There are 2 solutions:
+
+1. Set the Ansible python interpreter to `python3`
+
+E.g. like so (in your inventory file)
+
+----
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+----
+
+2. Have Ansible install python 2 for you before gathering facts.
+
+
+
+===== Kube scheduler failures
+
+During some of the initial ansible runs, we got:
+
+[source, bash]
+----
+RUNNING HANDLER [kubernetes/master : Master | wait for kube-scheduler] ***********************************************************************************************************************************
+Wednesday 06 September 2017  12:35:20 +0300 (0:00:00.073)       0:39:54.652 ***
+FAILED - RETRYING: Master | wait for kube-scheduler (60 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (60 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (60 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (59 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (59 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (59 retries left).
+...
+fatal: [kubernetes-mcore-master2]: FAILED! => {"attempts": 60, "changed": false, "content": "", "failed": true, "msg": "Status code was not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://localhost:10251/healthz"}
+FAILED - RETRYING: Master | wait for kube-scheduler (3 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (13 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (2 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (12 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (1 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (11 retries left).
+fatal: [kubernetes-mcore-master1]: FAILED! => {"attempts": 60, "changed": false, "content": "", "failed": true, "msg": "Status code was not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://localhost:10251/healthz"}
+FAILED - RETRYING: Master | wait for kube-scheduler (10 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (9 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (8 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (7 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (6 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (5 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (4 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (3 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (2 retries left).
+FAILED - RETRYING: Master | wait for kube-scheduler (1 retries left).
+fatal: [kubernetes-mcore-master0]: FAILED! => {"attempts": 60, "changed": false, "content": "", "failed": true, "msg": "Status code was not [200]: Request failed: <urlopen error [Errno 111] Connection refused>", "redirected": false, "status": -1, "url": "http://localhost:10251/healthz"}
+----
+
+The problem turned out to be that the EC2 instances did not have enough
+resources (we were trying out if `t2.micro` would be enough in terms of memory
+/ compute).
+
+The solution was to upgrade to `t2.small`.
+
+
++++<hr>+++
+
+Wow! You have your Kubernetes cluster set up!! Congrats!! Now, let's look at a few
+ link:4_0_HighAvailability_Outside_Cloud.asciidoc[Additional HA Considerations].
+
+
+== High Availability Outside the Cloud
+
+This section will cover how network traffic is routed in and out of the cluster in an HA way.
+
+Of course, if you are running on AWS, the easiest option is to use your cloud provider's features for this.
+Namely:
+
+Elastic Load Balancers:: For incoming traffic into your Kubernetes cluster.
+
+NAT Gateway:: For outgoing traffic, so that:
+a. your traffic always appears as *originating from specific IPs* (useful, e.g. for firewall whitelisting)
+b. you can keep all your EC2 instances in a private subnet (so that they don't have a public IP)
+but still give them internet access.
+
+:sectnums!:
+=== ...BUT what if you can't / don't want to use these?
+
+:sectnums:
+
+We've put together some instructions for each:
+
+* link:4_1_HighAvailability_LoadBalancing.asciidoc[High Availability Load Balancing]
+* link:4_2_HighAvailability_NAT.asciidoc[High Availability NAT]
+
+Or, you may want to skip ahead to
+link:5_0_Persistent_Storage_for_K8s.asciidoc[Persistent Storage for Kubernetes].
+
+
+=== Load Balancing Incoming Traffic
+
+Ok, let's decompose this into the following 3 steps:
+
+1.DNS => Host:: Resolve Host from DNS
+2.Host => Kubernetes:: Forward traffic from host to Kubernetes cluster
+3.Kubernetes => Your Service:: Map incoming request to your service running within Kubernetes
+
+Our solution will be based on the
+https://github.com/kubernetes/contrib/tree/master/service-loadbalancer[Kubernetes Service LoadBalancer].
+
+_The Service LoadBalancer is essentially deployed as a Pod *within* the k8s cluster, so we will first
+need to look at how an incoming request will reach that specific pod._
+
+==== DNS Resolution (DNS => Host)
+
+This actually turns out to be much simpler than we originally thought and basically boils down to this:
+
+[literal]
+Add an `A` record to your DNS with the IP of every host that you will deploy the Service LoadBalancer pod on.
+
+By adding the multiple `A` records, you are telling DNS clients to essentially round robin between the
+candidate hosts.
+
+A detailed discussion on the number of hosts you will choose to deploy it on, is slightly beyond
+the scope of this guide. Suffice it to say you should deploy to *at least* 2 hosts.
+
+_Ok, our incoming request has now reached one of the hosts. What next?_
+
+==== Forwarding to Kubernetes (Host => Kubernetes)
+
+The idea is, again, quite simple:
+
+Rather than opening a separate port on each worker node, through multiple `NodePort` services (one for
+each of the different services we would have running within our K8s cluster), instead, we will have *a single
+`NodePort` service*, for the Service LoadBalancer.
+
+This way, we avoid port conflicts on the host (e.g. in the case where we're deploying multiple instances of the
+same app) and access control also becomes much simpler (only one firewall port needs to be opened).
+
+Here is an example of the service definition:
+
+[source, yaml]
+----
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lb-service
+  namespace: kube-system
+spec:
+  type: NodePort
+  selector:
+    app: service-loadbalancer
+  ports:
+  - port: 80
+    nodePort: 30800
+    name: http
+  - port: 443
+    nodePort: 30443
+    name: https
+----
+
+_With this, the incoming request for `app.under.my_domain.name:30800`, should now have entered the
+Kubernetes cluster and we just need to find out where to route it internally._
+
+==== Route Internally (Kubernetes => Service)
+
+This is finally where the Service LoadBalancer is able to do its thing. The incoming request has
+reached one of its pods and it now needs to look up how to route this service.
+
+The Service LoadBalancer is actually already very powerful (even though it's still under WIP) and
+supports many different ways to do this, but we will be focusing on the `Name-based virtual hosting`.
+
+NOTE: The Service LoadBalancer readme currently states that this is an undocumented feature, but I
+ found it pretty easy to get it to work.
+
+Let's consider an example to help you understand the differences involved.
+
+Deploy Grafana and expose it not as `NodePort`, but rather through the Service LoadBalancer's
+Name-based virtual hosting.
+
+https://github.com/gregbkr/kubernetes-kargo-logging-monitoring[Here's] a great resource for how to
+deploy various common components into your K8s cluster. This is how Grafana is deployed there:
+
+[source, yaml]
+----
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: core
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      nodePort: 30000
+  selector:
+    app: grafana
+    component: core
+----
+
+This would open up port `30000` on the worker node and would forward incoming requests from that port
+directly to Grafana, on port `3000` on the container its running on.
+
+Instead, using the Service LoadBalancer, we don't need to expose that port at all!
+
+[source, yaml]
+----
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: core
+  annotations:
+    serviceloadbalancer/lb.host: grafana.under.my_domain.name:30800 # <1>
+spec:
+#  type: NodePort # <2>
+  ports:
+    - port: 3000
+#      nodePort: 30000 # <3>
+  selector:
+    app: grafana
+    component: core
+----
+1. Added annotation that tells the ServiceLoadbalancer to implement the virtual hosting. Note port
+inclusion.  ; )
+2. commented out the lines to help you spot the difference
+3. commented out the lines to help you spot the difference
+
+
+==== Limitations
+
+Compared to AWS ELB, this approach does not provide a solution for the health check mechanism bundled
+into ELB. Combined with an AWS Auto-Scaling Group, this can help you overcome node failures by
+automatically destroying the failed instances and starting new ones.
+
+I am not interested in this feature for the given use case and for the time being, so we are explicitly
+excluding it from our scope.
+
++++<hr>+++
+
+Done already? You can move on to the link:4_2_HighAvailability_NAT.asciidoc[HA NAT] section.
+
+
+=== NATing outgoing traffic
+
+As we mentioned above, there are 2 main reasons we are considering, for which you would need to use
+NAT for your outgoing network traffic.
+
+1.Static Origin IPs:: Your traffic always appears as *originating from specific IPs* (useful,
+e.g. for firewall whitelisting)
+
+2.Private Subnets:: You can keep all your EC2 instances in a private subnet (so that they don't have
+a public IP) but still give them internet access through the NAT gateway.
+
+==== High Availability NAT
+
+Even though I am most certainly NOT a networks expert, from what I've gathered in the past couple of
+days, an HA NAT deployment consists of the following components:
+
+NAT:: A set of nodes that implement NAT, each with its own public static IP address (no pun intended).
+Internet-bound traffic from the internal network is routed to these nodes, where NAT is applied
+before the traffic is forwarded.
+
+Routing Table:: A software-defined routing table for each of the private network subnets. This way the
+traffic from the Kubernetes nodes who are running in the private subnets can reach a suitable NAT node,
+so that it can then be forwarded to the internet.
+
+Health check & Fail-over:: Some entity that monitors the NAT nodes (failures, unreachable, etc.) and
+modifies the above routing table, in case one of the nodes goes down.
+
+=== HA NAT @ Bare Metal
+
+In our particular bare metal scenario, there is actually no hard "business" need for us to provide NAT
+as part of our deployment. If any NATing takes place, it happens elsewhere on the network.
+
+We are simply assigned a *set of predefined public IPs* for my Kubernetes cluster nodes.
+This solves #1. #2 is not a particular concern as there is a separate firewall (with its own set of policies).
+
+And this leads us to the first real-world solution for implementing NAT: YAGNI!
+i.e. If it's already taken care of, for you, why build it in the first place?
+
+NOTE: Even though we've not had the use case yet, you might! If you do need to roll your own
+HA NAT, here's what to consider:
+*1.* Who in your network does the actual NATing? *2.* How is the traffic routed from the private subnets
+to the NAT nodes and *3.* How do you monitor #1 and how do you modify #2 ?
+
+=== HA NAT @ AWS
+
+Once on AWS, things are always a lot simpler... _and more expensive!_
+
+==== AWS NAT Gateway
+
+The most expensive solution is the AWS NAT Gateway. It covers everything you need and it only takes
+a few clicks (or CLI/API calls) to set it up. _Therefore, it is also the simplest!_
+
+You simply create a new NAT gateway from the AWS console. Then go to the Route Table of your private
+subnet, which probably looks something like:
+
+`<your_private_ip_range> local`
+
+and add a single entry:
+
+`0.0.0.0 <nat_gateway_id>`
+
+so that all non-local traffic will now go through the NAT gateway.
+
+IMPORTANT: You will need one NAT gateway per AZ, so you'll need to repeat this process if you have
+a different private subnet per AZ.
+
+==== AWS NAT Instances
+
+This solution is a sort of a roll-your-own, but-with-Amazon's-help type of solution and boils down
+to the following:
+
+1.NAT Instances::
+Deploy an off-the-shelf NAT Instance (meaning they give you the AMI you need) per AZ.
+
+2.Route Table::
+Add an entry to the route table of each private subnet towards the EC2 instance id of the NAT
+instance in the same AZ as the subnet.
+
+3.Health-Check::
+Use the EC2 instance `User Data` to add a bash script that allows the NAT instances to monitor
+each other.
+
+The approach is described in detail in a (rather old)
+https://aws.amazon.com/articles/2781451301784570[AWS article].
+
+IMPORTANT: Even though *considerably* cheaper, there are 2 important caveats to this approach from
+our experience.
+
+1. There *is* some sort of bug in the `nat_monitor.sh` script that can lead to both NAT instances
+reaching a `STOPPED` state. All it takes is a simple "start" to get them going, but *we did get bit
+hard by this* and we did have to install appropriate monitors in place.
+
+1. When picking the EC2 instance size for your NAT instance, you'll be inclined to just go with
+ `t2.nano`. Do take into account that the smaller instances have a considerably lower network
+ bandwidth, so if you are experiencing some sort of bottleneck that you can't trace on the rest
+ of your infra, you'll want to test that too!
+
++++<hr>+++
+
+Awesome! Now, time for the final piece of the puzzle:
+link:5_0_Persistent_Storage_for_K8s.asciidoc[Persistent Storage for Kubernetes].
+
+== Persistent Storage for K8s
+
+There's a whole bunch of applications that store data you really, absolutely, definitely, 100%
+won't want to lose. For those apps, you'll need to have Kubernetes assign them some persistent storage.
+
+=== Prerequisites
+
+Before moving on, please make yourself familiar with the storage options offered by Kubernetes:
+
+* https://kubernetes.io/docs/concepts/storage/volumes/[Kubernetes Volumes]
+* https://kubernetes.io/docs/concepts/storage/persistent-volumes/[Kubernetes Persistent Volumes]
+* http://blog.kubernetes.io/2016/10/dynamic-provisioning-and-storage-in-kubernetes.html[Dynamic Provisioning]
+
+Depending on your deployment environment (Public Cloud, Private Cloud, or bare metal on-prem installation),
+you will need to select a suitable https://kubernetes
+.io/docs/concepts/storage/persistent-volumes/#storageclasses[Backing Storage type].
+
++++<hr>+++
+
+Awesome! After all that reading, let's get back to hands on:
+
+* link:5_1_Persistent_Storage_AWS-EBS.asciidoc[Persistent Storage on AWS].
+* link:5_2_Persistent_Storage_GlusterFS.asciidoc[Persistent Storage w/ GlusterFS].
+
+=== Dynamic Provisioning of AWS EBS Volumes
+
+Even though originally, we wanted no dependency on AWS, for our persistent storage of our Elasticsearch cluster, we
+will use dynamically provisioned AWS EBS volumes.
+
+==== IAM Roles and Policies
+
+Make sure to include the kubespray-bundled roles and IAM policies.
+
+==== Set the `cloud_provider` param
+
+on the command line, this is set as `--cloud-provider=aws`, but kubespray
+also has an option in its `all.yml` properties file, so you'll need to set:
+
+`cloud_provider: aws` (*note the `_` vs `-` in the different way the var is set*).
+
+WARNING: Without this attribute, even if you have created the `StorageClass` (see below)
+you will get `"no volume plugin matched"` errors
+in the `kube-controller-manager` logs (took me a while to find out where
+these logs are...)
+
+
+==== Enable Dynamic Provisioning
+
+This is enabled by adding a plugin for provisioning volumes. This
+comes in the form of a `StorageClass`.
+
+Here is an example:
+
+[source, yaml]
+----
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: ebs
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+  zones: eu-west-1a, eu-west-1b, eu-west-1c
+----
+
+==== Get your first Persistent Volume
+
+This will be automatically
+
+[source, yaml]
+----
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: pvc-engineering
+spec:
+ accessModes:
+  - ReadWriteMany
+ resources:
+   requests:
+     storage: 10Gi
+ storageClassName: ebs
+----
+
+
+
+=== Set up GlusterFS cluster
+
+WARNING: GlusterFS is not recommended for deploying Elasticsearch. Here's
+some more info on that:
+https://bugzilla.redhat.com/show_bug.cgi?id=1430659#c2[link1], and
+https://forums.rancher.com/t/glusterfs-and-elasticsearch/2293/6[link2].
+The only approach we found that sounded close to what we want is
+https://pkalever.wordpress.com/2016/11/18/elasticsearch-with-gluster-block-storage/[link3]
+but we had no time to look into this in more detail.
+
+==== Create LVs on Metal
+
+Create a logical volume with 100GB to each server with the following command: ﻿
+
+[source, bash]
+----
+sudo lvcreate -L 100g <name-of the-volume-group>
+----
+
+The name of the volume group can be retrieved with the following command under VG column:
+
+[source, bash]
+----
+sudo lvs
+----
+
+==== Create LVs on AWS
+
+Here's how to do that on the command-line:
+
+[source, bash]
+----
+sudo vgcreate worker3 /dev/xvdf
+sudo lvcreate -L 9g worker3
+----
+
+Add the volume disk id, on the same line, for each host in your glusterfs cluster inventory:
+e.g. `disk_volume_device_1=/dev/mapper/ent--vg-lvol0`.
+
+Sample inventory:
+----
+[all]
+pegasus      ansible_host=139.91.23.5 ip=139.91.23.5 disk_volume_device_1=/dev/mapper/pegasus--vg-lvol0
+ent      ansible_host=139.91.23.8 ip=139.91.23.8 disk_volume_device_1=/dev/mapper/ent--vg-lvol0
+----
+
+----
+[gfs-cluster]
+kube-node
+
+[network-storage:children]
+gfs-cluster
+----
+
+Basically, for each Kubernetes PV you want to add to glusterFS, you
+ will need to follow this procedure:
+
+1. Add extra EBS volumes and attach them to existing EC2 instances
+(Similarly need extra LVMs, on bare metal)
+2. Add the device mapping to ansible inventory, incrementing the
+`disk_volume_device` number
+
+
+==== Troubleshooting
+
+
+===== Allow non-root users to write to glusterfs volumes
+
+As long as your container is running under `root`, you're fine.
+Alas, that's not the case for all containers (hello Elasticsearch!).
+
+We have encountered what seems to be a pretty common issue, as you can
+see from the following links:
+
+* https://github.com/gluster/glusterfs/issues/262
+* https://github.com/kubernetes/kubernetes/issues/40180
+
+One solution:
+
+set owner / group id **on the gluster volume** and on the node
+set https://gluster.readthedocs.io/en/latest/Administrator%20Guide/Access%20Control%20Lists/[Access Control Lists].
+
+Second solution:
+
+chown ???
+
+third solution:
+
+`gluster volume set $VOLUME allow-insecure on`
+
+https://joejulian.name/blog/mounting-a-glusterfs-volume-as-an-unprivileged-user/
+
+In the end, we managed to overcome this by using both the below on the PVC:
+
+[source,yaml]
+----
+  annotations:
+    pv.beta.kubernetes.io/gid: "1234"
+----
+
+AND adding the following security context on the `spec` of the **Pod**
+(not the container) that is using the PVC
+
+[source,yaml]
+----
+  securityContext:
+    supplementalGroups: [1000]
+    fsGroup: 1000
+----
+
+
+
++++<hr>+++
+
+With all this done, you're now ready to start
+link:6_Deploying_On_Kubernetes.asciidoc[Deploying on Kubernetes]!
