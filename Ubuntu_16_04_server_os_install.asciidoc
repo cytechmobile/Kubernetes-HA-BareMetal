@@ -10,16 +10,16 @@ or https://tutorials.ubuntu.com/tutorial/tutorial-create-a-usb-stick-on-ubuntu[U
 
 1. Boot from USB device
 1. _UNetbootin prompt_: Select **"Install Ubuntu Server"
-1. _Language_: Who am I to say what language you want to set on your server... I just
+1. _Language_: Who are we to say what language you want to set on your server... We just
 went for the boring option: **"English"**
 
 1. _Country selection_: Select your country (in our case "Other"  => "Europe" => "Greece")
 1. _Locale selection_: `en_US.UTF-8` locale selection
 1. _Keyboard layout_: **"Yes"** on auto-detect. Press keys as requested. (in our case, `us:intl` )
 1. Press **"ok"** on unetbooting warning. You can safely ignore.
-1. _Hostname_: You will need some kind of naming scheme. I used **`kube01`** and increased
+1. _Hostname_: You will need some kind of naming scheme. We used **`kube01`** and increased
 numbering accordingly.
-1. _Username_: Please feel free to use `ubuntu` or whatever you prefer. I used **`k8s`**.
+1. _Username_: Please feel free to use `ubuntu` or whatever you prefer. We used **`k8s`**.
 1. _Password_: Select a secure password and make sure to store it somewhere safe. No,
 Post-its on your screen do not classify as "somewhere safe".
 
@@ -41,7 +41,7 @@ you selected "No".
 
 1. _Proxy_: leave **blank**, or enter http proxy, if appropriate (in my case blank).
 1. _Security Updates_: Again, this is a security consideration you will have to make
- on your own (I am by no means a security expert), but I did select:
+ on your own (I am by no means a security expert), but we did select:
  **"Install security updates"**
 
 1. _Software selection_:

@@ -1,7 +1,7 @@
 = Dynamic Provisioning of AWS EBS Volumes
 
-Even though originally, we wanted no dependency on AWS, For our persistent storage of our Elasticsearch cluster, we will use dynamically
-provisioned AWS EBS volumes.
+Even though originally, we wanted no dependency on AWS, for our persistent storage of our Elasticsearch cluster, we
+will use dynamically provisioned AWS EBS volumes.
 
 == 1. IAM Roles and Policies
 

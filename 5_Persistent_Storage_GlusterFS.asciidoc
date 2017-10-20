@@ -10,8 +10,19 @@ but we had no time to look into this in more detail.
 
 == Create LVs on Metal
 
-Create a logical volume with 100GB to each server with the following command: ﻿`sudo lvcreate -L 100g <name-of the-volume-group>`
-The name of the volume group can be retrieved with the following command under VG column: `sudo lvs`
+Create a logical volume with 100GB to each server with the following command: ﻿
+
+[source, bash]
+----
+sudo lvcreate -L 100g <name-of the-volume-group>
+----
+
+The name of the volume group can be retrieved with the following command under VG column:
+
+[source, bash]
+----
+sudo lvs
+----
 
 == Create LVs on AWS
 

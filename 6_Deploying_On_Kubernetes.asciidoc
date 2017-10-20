@@ -49,8 +49,8 @@ https://github.com/gregbkr/kubernetes-kargo-logging-monitoring.git[very
 interesting guide], however we were not able to deploy the `Logging` solution,
 due to an issue with the persistent volume.
 
-In the end, this only worked after having set up Dynamic Provisioning
-through EBS Volumes.
+*In the end, this only worked after having set up
+link:5_1_Persistent_Storage_AWS-EBS.asciidoc[Dynamic Provisioning through EBS Volumes]*.
 
 
 

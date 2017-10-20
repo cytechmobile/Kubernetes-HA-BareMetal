@@ -2,7 +2,7 @@
 
 This section will cover how network traffic is routed in and out of the cluster in an HA way.
 
-Of course, if you are running on AWS, your best option is to use your cloud provider's features for this.
+Of course, if you are running on AWS, the easiest option is to use your cloud provider's features for this.
 Namely:
 
 Elastic Load Balancers:: For incoming traffic into your Kubernetes cluster.
@@ -13,7 +13,7 @@ b. you can keep all your EC2 instances in a private subnet (so that they don't h
 but still give them internet access.
 
 
-...BUT what if you can't / don't want to use these?
+=== ...BUT what if you can't / don't want to use these?
 
 
 We've put together some instructions for each:

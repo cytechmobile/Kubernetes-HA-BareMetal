@@ -8,18 +8,18 @@ actually on bare metal servers, or if you're running on some hosted servers
 == Select Operating System for Kubernetes Hosts
 
 Docker is known to have several issues with different Linux kernel versions. One thing
-I learnt (the hard way) is that `One does not simply run Docker on Linux` (and expect
+we learnt (the hard way) is that `One does not simply run Docker on Linux` (and expect
 a production-grade system).
 
-I would recommend you stay with one of the supported OS versions that Kubespray supports.
+We would recommend you stay with one of the supported OS versions that Kubespray supports.
 
-Namely: *Ubuntu* and *CoreOS*. I chose Ubuntu, due to previous familiarity with the distro.
+Namely: *Ubuntu* and *CoreOS*. We chose Ubuntu, due to previous familiarity with the distro.
 
 
 == Bare Metal
 
 Clearly, the first step after you wire up the servers on your rack is to install the
-operating system. In my case this was Ubuntu 16.04, so
+operating system. In our case this was Ubuntu 16.04, so
 link:Ubuntu_16_04_server_os_install.asciidoc[I wrote down the steps], in case you have
 any doubts.
 
@@ -35,13 +35,13 @@ We have `Terraform` for that. In fact, the
 https://github.com/kubernetes-incubator/kubespray[Kubespray repo] even has a terraform
 example for AWS ready for you!
 
-BUT... it uses the AWS ELB and NAT gateway. Deal breakers for me, so what's a guy to do
-but roll his own ?
+BUT... it uses the AWS ELB and NAT gateway. Deal breakers for us here, so what are we to do
+but roll our own ?
 
 AWS ELB:: Amazon's elastic load balancer is used to bring internet traffic into your k8s
 cluster.
 +
-I will provide an HA solution that is based on the
+We hereby provide an HA solution that is based on the
 https://github.com/kubernetes/contrib/tree/master/service-loadbalancer[Kubernetes Service LoadBalancer].
 
 
@@ -50,8 +50,8 @@ subnet, meaning the EC2 instances don't have public IPs. Amazon's NAT gateway of
 way to NAT your traffic to a set of Elastic IPs, allowing - amongst other things - your
 peers to whitelist just your IPs.
 +
-I will provide a different solution to satisfy this constraint, as I can't afford to have
-just any random set of IPs as the source of my traffic.
+We will provide a different solution to satisfy this constraint, as we can't afford to have
+just any random set of IPs as the source of our traffic.
 
 Both these will be discussed in the next section.
 

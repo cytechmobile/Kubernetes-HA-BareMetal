@@ -43,7 +43,8 @@ to check if it's enabled and how to do so.
 == AWS EC2
 
 Public Key::
-On AWS, the public key is automatically inserted in place for you. Nothing to do here.
+On AWS, the public key of the EC2 key pair you will use, is automatically inserted in
+place for you. Nothing to do here.
 
 NOTE: A note on Python. Kubespray will handle that for you, as long as you set the
 `bootstrap_os` variable (in `group_vars/all.yml`). We're setting up on Ubuntu, so:

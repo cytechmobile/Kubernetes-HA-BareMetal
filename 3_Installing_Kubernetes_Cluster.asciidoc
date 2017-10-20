@@ -1,4 +1,4 @@
-= Install Kubernetes Cluster
+= 3. Install Kubernetes Cluster
 
 Now it's time to proceed with the installation of the actual cluster.
 

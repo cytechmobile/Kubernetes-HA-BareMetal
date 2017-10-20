@@ -15,7 +15,7 @@ need to look at how an incoming request will reach that specific pod._
 
 == DNS Resolution (DNS => Host)
 
-This actually turns out to be much simpler than I would have thought and basically boils down to this:
+This actually turns out to be much simpler than we originally thought and basically boils down to this:
 
 [literal]
 Add an `A` record to your DNS with the IP of every host that you will deploy the Service LoadBalancer pod on.
@@ -32,8 +32,8 @@ _Ok, our incoming request has now reached one of the hosts. What next?_
 
 The idea is, again, quite simple:
 
-Rather than opening a separate port on each worker node, through multiple `NodePort` services, one for
-each of the different services we will have running within the K8s cluster, instead, we will have *a single
+Rather than opening a separate port on each worker node, through multiple `NodePort` services (one for
+each of the different services we would have running within our K8s cluster), instead, we will have *a single
 `NodePort` service*, for the Service LoadBalancer.
 
 This way, we avoid port conflicts on the host (e.g. in the case where we're deploying multiple instances of the
@@ -71,7 +71,7 @@ This is finally where the Service LoadBalancer is able to do its thing. The inco
 reached one of its pods and it now needs to look up how to route this service.
 
 The Service LoadBalancer is actually already very powerful (even though it's still under WIP) and
-supports many different ways to do this, but I will be focusing on the `Name-based virtual hosting`.
+supports many different ways to do this, but we will be focusing on the `Name-based virtual hosting`.
 
 NOTE: The Service LoadBalancer readme currently states that this is an undocumented feature, but I
  found it pretty easy to get it to work.
@@ -81,7 +81,8 @@ Let's consider an example to help you understand the differences involved.
 Deploy Grafana and expose it not as `NodePort`, but rather through the Service LoadBalancer's
 Name-based virtual hosting.
 
-Traditionally, you would expose Grafana like so:
+https://github.com/gregbkr/kubernetes-kargo-logging-monitoring[Here's] a great resource for how to
+deploy various common components into your K8s cluster. This is how Grafana is deployed there:
 
 [source, yaml]
 ----
@@ -104,10 +105,10 @@ spec:
     component: core
 ----
 
-This would open up port 30000 on the worker node and would forward incoming requests from that port
-directly to Grafana.
+This would open up port `30000` on the worker node and would forward incoming requests from that port
+directly to Grafana, on port `3000` on the container its running on.
 
-Instead, using the Service LoadBalancer, we don't need to expose that port:
+Instead, using the Service LoadBalancer, we don't need to expose that port at all!
 
 [source, yaml]
 ----
@@ -121,18 +122,21 @@ metadata:
     app: grafana
     component: core
   annotations:
-    serviceloadbalancer/lb.host: grafana.under.my_domain.name:30800
+    serviceloadbalancer/lb.host: grafana.under.my_domain.name:30800 # <1>
 spec:
-#  type: NodePort
+#  type: NodePort # <2>
   ports:
     - port: 3000
-#      nodePort: 30000
+#      nodePort: 30000 # <3>
   selector:
     app: grafana
     component: core
 ----
+1. Added annotation that tells the ServiceLoadbalancer to implement the virtual hosting. Note port
+inclusion.  ; )
+2. commented out the lines to help you spot the difference
+3. commented out the lines to help you spot the difference
 
-(_I've commented out the lines to help you spot the difference_)
 
 == Limitations
 
@@ -140,8 +144,8 @@ Compared to AWS ELB, this approach does not provide a solution for the health ch
 into ELB. Combined with an AWS Auto-Scaling Group, this can help you overcome node failures by
 automatically destroying the failed instances and starting new ones.
 
-I am not interested in this feature for the given use case and for the time being, so I am explicitly
-excluding it from my scope.
+I am not interested in this feature for the given use case and for the time being, so we are explicitly
+excluding it from our scope.
 
 +++<hr>+++
 
