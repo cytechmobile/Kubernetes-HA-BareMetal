@@ -1,13 +1,14 @@
-= Kubernetes HA @ Bare Metal, using Kubespray
+= Kubernetes HA, using Kubespray
 
-A Beginner's guide to an HA deployment of Kubernetes on Bare Metal, using
-https://github.com/kubernetes-incubator/kubespray[Kubespray].
+A guide to an HA deployment of Kubernetes, using
+https://github.com/kubernetes-incubator/kubespray[Kubespray] and *as few cloud components as possible*!
 
-_**#noCloud:** This document describes how to set up a Kubernetes cluster on Bare
-Metal (or dedicated servers, or EC2 instances, etc.) without making any assumptions
-about running on a cloud and making use of any special cloud features that would
-usually make your life easier (e.g. ELB) -- but at the same time lock you in with
-a cloud vendor!_
+This is a conscious decision. We know life is easier in the cloud, yet we must also be able to deploy on-prem.
+
+As such, we follow a dual approach, providing instructions for both a deployment on AWS, as well as Bare Metal
+for each of the respective sections below.
+
+_Note: This guide is still being refined. Feedback is welcome!_
 
 +++<hr>+++
 
