@@ -10,31 +10,67 @@ In order to do this, we'll use `kubespray's` ansible playbooks, which involves t
 
 == Create inventory for Ansible playbooks
 
-This can be created using a python script (you might need to install `python3` -- `brew install python3`),
+If using `terraform` to set up your infra, this should be automatically generated for you, in the
+`/ansible/<installation_name>/ansible_inventory` file.
+
+If not, this can also be created using a python script (you might need to install `python3` -- `brew install python3`),
 by running the following set of commands, available in the
 https://github.com/kubernetes-incubator/kubespray/blob/master/docs/getting-started.md#building-your-own-inventory[kubespray guide for building your own inventory].
 
-NOTE: If using `terraform` to set up your infra, this should be automatically generated for you.
-https://github.com/kubernetes-incubator/kubespray/blob/master/contrib/terraform/aws/create-infrastructure.tf#L163-L186[See how, here].
-
-Once you have your inventory ready (don't forget the python interpreter setting from the previous section),
-it's time to let Ansible do the heavy lifting for you.
+Once you have your inventory ready, it's time to let Ansible do the heavy lifting for you.
 
 == Running Ansible
+
+Please make sure to go through the following steps before actually running Ansible.
+
+We had quite some trouble getting this to work, especially when combined with the use of *bastion hosts*.
+
+=== Using Bastion Hosts
+
+The kubespray deployment example also includes bastion hosts. The idea is you SSH
+into these hosts and from there (and only from there) you're allowed to ssh into the
+rest of your cluster.
+
+For this reason, we have bundled an example of our `ssh-bastion.conf` in `/ansible/cytechmobile/ssh-bastion.conf`.
+Please adapt accordingly.
+
+NOTE: We use Debian Jessie for our bastion hosts and Ubuntu for our k8s nodes, so note the different usernames.
+
+=== Flush cache
+
+Add the `--flush-cache` option to your ansible run, after destroying and recreating EC2 nodes. Ansible uses some
+caches that may be interfering with your setup.
+
+=== Set `ubuntu` as `bootstrap_os`
+
+Make *sure* to set the right value in your inventory's `group_vars/all.yml`
+file.
+
+HINT: If you don't and you're deploying on Ubuntu 16.04, you'll run into the
+`/usr/bin/python not found` error we explore below.
+
+=== Set `cloud_provider`
+
+If you're deploying on AWS, make sure to set the `cloud_provider` to `aws` in your `group_vars/all.yml`.
+
+== Start Kubespray
 
 Getting Ansible to set up your Kubernetes cluster is as simple as:
 
 [source, bash]
 ----
+cd ansible/<installation_name> <1>
 ansible-playbook \
-  --inventory-file=my_inventory/hosts \ # <1>
-  kubespray/cluster.yml # <2>
+  --inventory-file=<installation_name>/ansible_inventory \ # <2>
   --become \ # <3>
-  --user=ubuntu # <4>
+  --user=ubuntu \ # <4>
+  --flush-cache \
+  ../kubespray/cluster.yml
 ----
-<1> The inventory file (i.e. details about your hosts) that you created in the
+<1> By going into this directory, Ansible will pick up the `ansible.cfg` and `ssh-bastion.conf`
+giving you access to your hosts.
+<2> The inventory file (i.e. details about your hosts) that you created in the
 previous section.
-<2> The path to the kubespray `cluster.yml`
 <3> According to Ansible help this `run operations with become` - i.e. run with `su`
 <4> The user to connect as *to your kubernetes cluster hosts*. I am emphasizing this
 because I was confused what I should use in the case that the bastion hosts have a
@@ -43,27 +79,6 @@ different user than the kubernetes hosts.
 NOTE: Leave the `efk` attribute to `false`, as we'll deploy our
       own E(F)(L)K
 
-
-Now, even though this sounds straightforward enough, I had quite some trouble getting
-it to work when combined with *bastion hosts*.
-
-=== Using Bastion Hosts
-
-The kubespray deployment example also includes bastion hosts. The idea is you SSH
-into these hosts and from there (and only from there) you're allowed to ssh into the
-rest of your cluster.
-
-=== Flush cache
-
-`--flush-cache` option to your ansible run, after destroying and recreating.
-
-=== set ubuntu bootstrap_os
-
-Make *sure* to set the right value in your inventory's `group_vars/all.yml`
-file.
-
-HINT: If you don't and you're deploying on Ubuntu 16.04, you'll run into the
-`/usr/bin/python not found` error we explore below.
 
 === Get SSH keys and sort out your ~/.kube/config
 
@@ -76,43 +91,30 @@ As this is not available yet, we combined some of the solutions there and
 came up with link:ansible/kubectl_setup.yml[a couple of plays] that handle
 that for you.
 
-However, this is still WIP, so for the moment (PRs welcome!)
-you still need to edit the `~/.kube/config` file manually, in order to:
-
-1. add the IP of the master node under the clusters section
-1. Add the `insecure-skip-tls-verify: true` instead of the
-`certificate-authority` attribute to the cluster.
-
-
-=== deploy dashboard
-
-`kubectl apply -f kubernetes-dashboard/` from
-https://github.com/gregbkr/kubernetes-kargo-logging-monitoring[this
-amazing guide !]
-
-=== deploy service loadbalancer
-
-[source, bash]
+1. Please replace `<YOUR_DOMAIN_NAME>` in `kubectl_setup.yml`, with yours.
+1. On your workstation, go to the `./ansible/<installation_name>` folder
+1. Ensure you have added the SSH private key of the EC2 key pair you created to your ssh agent.
+1. Run the below command to add to the `~/.kube/config.one` file the details
+to connect to the specific client's Kubernetes cluster. (Repeat for all the different
+installations you have performed so that you have ALL kubernetes clusters (of all your
+installations) in one file):
++
 ----
-$ kubectl apply -f service-loadbalancer-daemonset.yaml
-daemonset "service-loadbalancer" created
-service "lb-service" created
+export KUBECONFIG=~/.kube/config.one
 
-# add role to as many *worker* nodes as you see fit,
-# good to have at least one in each AZ
-# (master nodes are unschedulable)
-
-$ kubectl label node ip-10-139-91-136 role=loadbalancer
-node "ip-10-139-91-136" labeled
-$ kubectl label node ip-10-139-92-222 role=loadbalancer
-node "ip-10-139-92-222" labeled
-$ kubectl label node ip-10-139-93-237 role=loadbalancer
-node "ip-10-139-93-237" labeled
+ansible-playbook \
+  --inventory-file=ansible_inventory  \
+  --extra-vars=installation_name=<installation_name> \
+  --user=ubuntu \
+  --flush-cache \
+  ../kubectl_setup.yml
 ----
+*** 4. Then, make sure you switch to the right context:
++
+`kubectl config use-context <installation_name>`
 
 
-
-=== Troubleshooting
+== Troubleshooting
 
 Some issues we came across during the process.
 
@@ -170,7 +172,9 @@ E.g. like so (in your inventory file)
 ansible_python_interpreter=/usr/bin/python3
 ----
 
-2. Have Ansible install python 2 for you before gathering facts.
+2. Have Ansible install python 2 for you before gathering facts. This is supported
+*out of the box* by the Kubespray repo, as long as you set the `bootstrap_os` variable
+to the correct version.
 
 
 

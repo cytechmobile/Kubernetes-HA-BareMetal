@@ -57,6 +57,9 @@ just any random set of IPs as the source of our traffic.
 
 Both these will be discussed in the next section.
 
+We also have our own example that allows you to set up your K8s cluster even within an existing
+VPC, and this does NOT use an AWS ELB or NAT gateway. Please take a look at the `terraform` directory.
+
 +++<hr>+++
 
 Now that you have some hosts ready, you can

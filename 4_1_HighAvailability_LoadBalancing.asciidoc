@@ -1,6 +1,6 @@
 :sectanchors:
 
-== Load Balancing Incoming Traffic
+= Load Balancing Incoming Traffic
 
 Ok, let's decompose this into the following 3 steps:
 
@@ -44,6 +44,7 @@ Here is an example of the service definition:
 
 [source, yaml]
 ----
+
 ---
 apiVersion: v1
 kind: Service
@@ -87,6 +88,7 @@ deploy various common components into your K8s cluster. This is how Grafana is d
 
 [source, yaml]
 ----
+
 ---
 apiVersion: v1
 kind: Service
@@ -113,6 +115,7 @@ Instead, using the Service LoadBalancer, we don't need to expose that port at al
 
 [source, yaml]
 ----
+
 ---
 apiVersion: v1
 kind: Service
@@ -138,6 +141,41 @@ inclusion.  ; )
 2. commented out the lines to help you spot the difference
 3. commented out the lines to help you spot the difference
 
+== Deploy Kubernetes Service loadbalancer
+
+For all this to work, of course, you need to have the Kubernetes
+Service LoadBalancer deployed. To do that, you need to first
+deploy the `Daemonset` and then to label the nodes on which you
+want it to run on, accordingly.
+
+[source, bash]
+----
+$ kubectl apply -f service-loadbalancer-daemonset.yaml
+daemonset "service-loadbalancer" created
+service "lb-service" created
+
+# add role to as many *worker* nodes as you see fit,
+# good to have at least one in each AZ
+# (master nodes are unschedulable)
+
+# First, find the names of the k8s worker nodes:
+
+kubectl get nodes -l node-role.kubernetes.io/node=true
+
+
+# For each k8s worker node, run the following command:
+
+kubectl label node <node_name> role=loadbalancer
+
+# e.g.
+
+$ kubectl label node ip-10-139-91-136 role=loadbalancer
+node "ip-10-139-91-136" labeled
+$ kubectl label node ip-10-139-92-222 role=loadbalancer
+node "ip-10-139-92-222" labeled
+$ kubectl label node ip-10-139-93-237 role=loadbalancer
+node "ip-10-139-93-237" labeled
+----
 
 == Limitations
 
@@ -145,7 +183,7 @@ Compared to AWS ELB, this approach does not provide a solution for the health ch
 into ELB. Combined with an AWS Auto-Scaling Group, this can help you overcome node failures by
 automatically destroying the failed instances and starting new ones.
 
-I am not interested in this feature for the given use case and for the time being, so we are explicitly
+We are not interested in this feature for the given use case and for the time being, so we are explicitly
 excluding it from our scope.
 
 +++<hr>+++

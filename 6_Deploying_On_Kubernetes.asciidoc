@@ -1,7 +1,20 @@
 :sectnums:
 :sectanchors:
 
-= Chapter VI. Logging using Elasticsearch, Fluentd, Kibana (EFK)
+= Chapter VI. Deploying resources on Kubernetes
+
+
+== Deploy Kubernetes Dashboard
+
+WARNING: Even though the latest kubespray repo deploys this by default, this guide has
+not yet been updated reflect that. We deployed with the below approach. If your cluster
+already has the dashboard installed, please feel free to skip this section.
+
+`kubectl apply -f kubernetes-dashboard/` from
+https://github.com/gregbkr/kubernetes-kargo-logging-monitoring[this
+amazing guide !]
+
+== Logging using Elasticsearch, Fluentd, Kibana (EFK)
 
 If you want to direct logs to an elasticsearch cluster, there is a simple option in kubespray to enable this - WHICH I AM NOT USING.
 
@@ -89,7 +102,8 @@ $ kubectl create secret \
 === Define the image
 
 Great, now you can proceed with defining the `Pod` that will consume this secret
-when pulling down the image from the private registry.
+when pulling down the image from the private registry. Please note the
+`imagePullSecrets` attribute below.
 
 ----
     spec:
@@ -120,6 +134,3 @@ when pulling down the image from the private registry.
       imagePullSecrets:
         - name: cytech-gitlab-key
 ----
-
-
-=== HTTP Access

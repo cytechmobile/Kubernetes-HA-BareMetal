@@ -5,7 +5,7 @@
   tasks:
     - fetch:
         src: "/etc/kubernetes/ssl/{{ item }}.pem"
-        dest: "{{ playbook_dir }}/kubectl/{{ client_name }}/{{ item }}.pem"
+        dest: "{{ playbook_dir }}/{{ installation_name }}/kubectl/{{ item }}.pem"
         flat: True
       with_items:
         - admin-{{ inventory_hostname }}-key
@@ -14,6 +14,9 @@
     - name: export hostname
       set_fact:
         kubectl_name: "{{ inventory_hostname }}"
+    - name: "Curl AWS to get this instance's public IP address"
+      command: curl http://169.254.169.254/latest/meta-data/public-ipv4
+      register: ec2_public_ip
 
 - hosts: localhost
   connection: local
@@ -21,14 +24,15 @@
     kubectl_name: "{{ hostvars[groups['kube-master'][0]].kubectl_name }}"
   tasks:
     - name: check if context exists
-      command: kubectl config get-contexts mcore-{{ client_name }}
+      command: kubectl config get-contexts {{ installation_name }}
       register: kctl
       failed_when: kctl.rc == 0
     - block:
-      - name: create cluster mcore-{{ client_name }}
-        command: kubectl config set-cluster mcore-{{ client_name }}-cluster --certificate-authority={{ playbook_dir }}/kubectl/{{ client_name }}/ca.pem
-      - name: create credentials mcore-{{ client_name }}-admin
-        command: kubectl config set-credentials mcore-{{ client_name }}-admin --certificate-authority={{ playbook_dir }}/kubectl/{{ client_name }}/ca.pem --client-key={{ playbook_dir }}/kubectl/{{ client_name }}/admin-{{ kubectl_name }}-key.pem --client-certificate={{ playbook_dir }}/kubectl/{{ client_name }}/admin-{{ kubectl_name }}.pem
-      - name: create context mcore-{{ client_name }}
-        command: kubectl config set-context mcore-{{ client_name }} --cluster=mcore-{{ client_name }}-cluster --user=mcore-{{ client_name }}-admin
+      - name: create cluster {{ installation_name }}
+#        command: kubectl config set-cluster {{ installation_name }}-cluster --certificate-authority={{ playbook_dir }}/{{ installation_name }}/kubectl/ca.pem --server https://"{{ hostvars[groups['kube-master'][0]].ec2_public_ip.stdout }}":6443
+        command: kubectl config set-cluster {{ installation_name }}-cluster --server https://k8s-{{ installation_name }}-master-0.<YOUR_DOMAIN_NAME>:6443 --insecure-skip-tls-verify=true
+      - name: create credentials {{ installation_name }}-admin
+        command: kubectl config set-credentials {{ installation_name }}-admin --embed-certs=true --certificate-authority={{ playbook_dir }}/{{ installation_name }}/kubectl/ca.pem --client-key={{ playbook_dir }}/{{ installation_name }}/kubectl/admin-{{ kubectl_name }}-key.pem --client-certificate={{ playbook_dir }}/{{ installation_name }}/kubectl/admin-{{ kubectl_name }}.pem
+      - name: create context {{ installation_name }}
+        command: kubectl config set-context {{ installation_name }} --cluster={{ installation_name }}-cluster --user={{ installation_name }}-admin
       when: kctl.rc != 0
