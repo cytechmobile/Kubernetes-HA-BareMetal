@@ -7,7 +7,7 @@ The process of getting the hosts ready will clearly differ depending on whether 
 actually on bare metal servers, or if you're running on some hosted servers
 (e.g. VPS, EC2 instances, etc.)
 
-== Select Operating System for Kubernetes Hosts
+== Preparation: Select OS for Kubernetes Hosts
 
 Docker is known to have several issues with different Linux kernel versions. One thing
 we learnt (the hard way) is that `One does not simply run Docker on Linux` (and expect
@@ -15,7 +15,7 @@ a production-grade system).
 
 We would recommend you stay with one of the supported OS versions that Kubespray supports.
 
-Namely: *Ubuntu* and *CoreOS*. We chose Ubuntu, due to previous familiarity with the distro.
+Namely: *Ubuntu*, *CoreOS* or *Centos*. We chose Ubuntu, due to previous familiarity with the distro.
 
 
 == Bare Metal
