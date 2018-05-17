@@ -10,8 +10,11 @@ actually on bare metal servers, or if you're running on some hosted servers
 == Preparation: Select OS for Kubernetes Hosts
 
 Docker is known to have several issues with different Linux kernel versions. One thing
-we learnt (the hard way) is that `One does not simply run Docker on Linux` (and expect
-a production-grade system).
+we learnt (the hard way) is that 
+
+image::one_does_not_simply_run_docker_on_linux.jpg[One does not simply run Docker on Linux, 400]
+
+(and expect a production-grade system).
 
 We would recommend you stay with one of the supported OS versions that Kubespray supports.
 
@@ -27,7 +30,7 @@ any doubts.
 
 == AWS EC2 (without ELB / NAT Gateway)
 
-EC2 (ok, and VPC) is all we'll be using out of Amazon's services, to ensure we can easily
+In the case of AWS as our cloud provider, we still want to stay as vanilla as possible, to avoid vendor lock-in with AWS. As such, EC2 (ok, and VPC) is all we'll be using out of Amazon's services, to ensure we can easily
 transfer somewhere else.
 
 Now, you _could_ just go on the AWS web console, start a bunch of `ubuntu 16.04` instances,
