@@ -14,26 +14,26 @@ _Note: This guide is still being refined. Feedback is welcome!_
 
 This guide is structured as follows:
 
-link:1_Kubernetes_Hosts.asciidoc[Set Up Kubernetes Host Machines]:: Prepare the hosts, before installing kubernetes,
+link:1_Kubernetes_Hosts.asciidoc[1. Set Up Kubernetes Host Machines]:: Prepare the hosts, before installing kubernetes,
 depending on if you're using bare metal, virtual private servers, EC2 instances, etc.
 
-link:2_Kubernetes_Requirements.asciidoc[Requirements]:: A couple of basic things you'll need to take
+link:2_Kubernetes_Requirements.asciidoc[2. Requirements]:: A couple of basic things you'll need to take
 care of before beginning to install your cluster.
 
-link:3_Installing_Kubernetes_Cluster.asciidoc[Install Kubernetes]:: Use the Ansible playbooks / recipes provided by the Kubespray
+link:3_Installing_Kubernetes_Cluster.asciidoc[3. Install Kubernetes]:: Use the Ansible playbooks / recipes provided by the Kubespray
 project, in order to set up your Kubernetes cluster.
 
-link:4_0_HighAvailability_Outside_Cloud.asciidoc[High-Availability without AWS ELB]:: Even if you have an HA K8s cluster, you still need
+link:4_0_HighAvailability_Outside_Cloud.asciidoc[4. High-Availability without AWS ELB]:: Even if you have an HA K8s cluster, you still need
 an HA way to bring traffic into your cluster. Your best option is to use one of the
 cloud providers' Load Balancers (e.g. AWS ELB), but what if you can't / don't want to?
 
-link:5_0_Persistent_Storage_for_K8s.asciidoc[Set Up Persistent Storage for K8s]:: At some point, some apps
+link:5_0_Persistent_Storage_for_K8s.asciidoc[5.Set Up Persistent Storage for K8s]:: At some point, some apps
 will need some persistent storage (that can even survive K8s cluster restarts). GlusterFS is nice like that and
 can help you with this.
 
-link:6_Deploying_On_Kubernetes.asciidoc[Deploying on Kubernetes]:: Finally, we'll look at how to deploy some basic apps on Kubernetes.
+link:6_Deploying_On_Kubernetes.asciidoc[6. Deploying Apps to Kubernetes]:: Finally, we'll look at how to deploy some basic apps on Kubernetes.
 
 +++<hr>+++
 
-Let's start by link:1_Kubernetes_Hosts.asciidoc[Setting Up the Hosts] on which
+Let's start by link:1_Kubernetes_Hosts.asciidoc[1. Setting Up the Hosts] on which
 we'll install our Kubernetes cluster!
