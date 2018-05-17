@@ -21,14 +21,14 @@ We would recommend you stay with one of the supported OS versions that Kubespray
 Namely: *Ubuntu*, *CoreOS* or *Centos*. We chose Ubuntu, due to previous familiarity with the distro.
 
 
-== Bare Metal
+=== Instructions for Bare Metal
 
 Clearly, the first step after you wire up the servers on your rack is to install the
 operating system. In our case this was Ubuntu 16.04, so
 link:Ubuntu_16_04_server_os_install.asciidoc[I wrote down the steps], in case you have
 any doubts.
 
-== AWS EC2 (without ELB / NAT Gateway)
+=== Instructions for AWS EC2 (without ELB / NAT Gateway)
 
 In the case of AWS as our cloud provider, we still want to stay as vanilla as possible, to avoid vendor lock-in with AWS. As such, EC2 (ok, and VPC) is all we'll be using out of Amazon's services, to ensure we can easily
 transfer somewhere else.
@@ -43,19 +43,22 @@ example for AWS ready for you!
 BUT... it uses the AWS ELB and NAT gateway. Deal breakers for us here, so what are we to do
 but roll our own ?
 
-AWS ELB:: Amazon's elastic load balancer is used to bring internet traffic into your k8s
-cluster.
+== Load Balancer
+
+If you are lucky enough to be running on AWS, you have Amazon's elastic load balancer to bring internet traffic into your k8s
+cluster. If not (or if you don't want to be vendor-locked to that), you need to roll your own. 
 +
 We hereby provide an HA solution that is based on the
 https://github.com/kubernetes/contrib/tree/master/service-loadbalancer[Kubernetes Service LoadBalancer].
 
+== NAT Gateway
 
-NAT Gateway:: The Kubespray example deploys all of the Kubernetes cluster on a private
+The Kubespray AWS Terraform example deploys all of the Kubernetes cluster on a private
 subnet, meaning the EC2 instances don't have public IPs. Amazon's NAT gateway offers a
 way to NAT your traffic to a set of Elastic IPs, allowing - amongst other things - your
 peers to whitelist just your IPs.
 +
-We will provide a different solution to satisfy this constraint, as we can't afford to have
+For Bare Metal scenarios, we will provide a different solution to satisfy this constraint, as we can't afford to have
 just any random set of IPs as the source of our traffic.
 
 Both these will be discussed in the next section.
